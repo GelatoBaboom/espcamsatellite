@@ -1,3 +1,5 @@
+
+
 /*********
   Rui Santos
   Complete project details at https://RandomNerdTutorials.com/esp32-cam-take-photo-save-microsd-card
@@ -28,6 +30,7 @@
 #include "dl_lib.h"
 #include "driver/rtc_io.h"
 //#include <EEPROM.h>            // read and write from flash memory
+#include <Servo.h>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -36,7 +39,7 @@
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
-
+Servo servo;
 
 // define the number of bytes you want to access
 #define EEPROM_SIZE 1
@@ -61,19 +64,19 @@ DallasTemperature DS18B20(&oneWire);
 #define PCLK_GPIO_NUM     22
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
+//#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
 
 int pictureNumber = 0;
 
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
-  // Connect to Wi-Fi network with SSID and password
-  //Serial.print("Setting AP (Access Point)…");
-  // Remove the password parameter, if you want the AP (Access Point) to be open
-  Serial.begin(115200);
+
+  //Serial.begin(115200);
+  Serial.begin(9600);
   //Serial.setDebugOutput(true);
 
   DS18B20.begin();
+  servo.attach(13);
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -97,15 +100,11 @@ void setup() {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
 
-  if (psramFound()) {
-    config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-    config.jpeg_quality = 10;
-    config.fb_count = 2;
-  } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
-  }
+
+  config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+  config.jpeg_quality = 10;
+  config.fb_count = 2;
+
 
   // Init Camera
   esp_err_t err = esp_camera_init(&config);
@@ -114,134 +113,200 @@ void setup() {
     return;
   }
 
-  // Turns off the ESP32-CAM white on-board LED (flash) connected to GPIO 4
+  // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
   pinMode(4, OUTPUT);
   for (uint8_t t = 20; t > 0; t--) {
     digitalWrite(4, HIGH);
     delay(10);
     digitalWrite(4, LOW);
-    delay(100);
+    delay(50);
   }
-
-  //digitalWrite(4, LOW);
-  //rtc_gpio_hold_en(GPIO_NUM_4);
-  //  pinMode(12, OUTPUT);
-  //  digitalWrite(12, HIGH);
-  //  delay(1000);
-  //  digitalWrite(12, LOW);
-
-
+  Serial.println("");
+  Serial.println("Im awake again!");
 }
 void loop() {
 
   String inData = readSerialData();
   if (inData.startsWith("getImage"))
   {
-    digitalWrite(4, HIGH);
-    camera_fb_t * fb = NULL;
-    // Take Picture with Camera
-    delay(700);
-    digitalWrite(4, LOW);
-    //sin flash
-    fb = esp_camera_fb_get();
-       
-    if (!fb) {
-      Serial.println("Camera capture failed");
-      digitalWrite(4, HIGH);
-      delay(500);
-      digitalWrite(4, LOW);
-      delay(500);
-      digitalWrite(4, HIGH);
-      delay(500);
-      digitalWrite(4, LOW);
-      return;
-    }
-    Serial.println(String(fb->len));
-    delay(100);
-    inData = readSerialData();
-    while (inData == "") {
-      delay(100);
-      inData = readSerialData();
-    }
-    if (inData.startsWith("ok"))
-    {
-
-      //const char *data = (const char *)fb->buf;
-      //Serial.write(data, fb->len);
-
-      Serial.write(fb->buf, fb->len);
-      //      int position = 0 ;
-      //      int length  = fb->len;
-      //      const uint8_t *data = fb->buf;
-      //      while (position < length) {
-      //
-      //        int bufLength = ((position + 4096) > length) ? length - position : 4096;
-      //        Serial.write(&data[position], bufLength);
-      //        //position = ((position + bufLength) >= length) ? position + bufLength :  position;
-      //        position +=bufLength;
-      //        Serial.flush();
-      //      }
-
-      digitalWrite(4, HIGH);
-      delay(100);
-      digitalWrite(4, LOW);
-      delay(100);
-      digitalWrite(4, HIGH);
-      delay(100);
-      digitalWrite(4, LOW);
-      inData = readSerialData();
-      while (inData == "") {
-        delay(100);
-        inData = readSerialData();
-      }
-      if (inData.startsWith("received"))
-      {
-        esp_camera_fb_return(fb);
-        digitalWrite(4, HIGH);
-        delay(100);
-        digitalWrite(4, LOW);
-        ESP.restart();
-      }
-
-    }
-
+    getImage();
+  }
+  if (inData.startsWith("getTemp"))
+  {
+    getTemp();
+  }
+  if (inData.startsWith("restart"))
+  {
+    restart();
+  }
+  if (inData.startsWith("gotoSleep"))
+  {
+    goToSleep();
+  }
+  if (inData.startsWith("move"))
+  {
+    moveCam();
+  }
+  if (inData.startsWith("areYouThere"))
+  {
+    Serial.println("Im here");
   }
   delay(500);
 }
 //put parameter with timer to time out this func
 String readSerialData() {
   if (Serial.available() > 0) {
-    //Serial.println("data available: " + String(Serial.available()));
     String inString = "";
     while (Serial.available() > 0) {
       int inChar = Serial.read();
       inString += (char)inChar;
-      //Serial.print((char)inChar);
-      // if you get a newline, print the string, then the string's value:
       if (inChar == '\n') {
-        //Serial.println(inString.toInt());
         return inString;
       }
     }
   }
   return "";
 }
+int readSerialDataInt() {
+  if (Serial.available() > 0) {
+    String inString = "";
+    while (Serial.available() > 0) {
+      int inChar = Serial.read();
+      if (isDigit(inChar)) {
 
-//  float temp;
-//  Serial.println("Check temp..");
-//  //do {
-//  DS18B20.requestTemperaturesByIndex(0);
-//  temp = DS18B20.getTempCByIndex(0);
-//  delay(100);
-//  // } while (temp == 85.0 || temp == (-127.0));
-//  Serial.println("temp: " + String(temp));
-//
-//  delay(2000);
-//  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-//  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) +
-//                 " Seconds");
-//  Serial.println("Going to sleep now");
-//  Serial.flush();
-//  esp_deep_sleep_start();
-//}
+        inString += (char)inChar;
+      }
+      if (inChar == '\n') {
+        return inString.toInt();
+      }
+    }
+  }
+  return -1;
+}
+void getImage()
+{
+  digitalWrite(4, HIGH);
+  camera_fb_t * fb = NULL;
+  // Take Picture with Camera
+  delay(700);
+  digitalWrite(4, LOW);
+  //sin flash
+  fb = esp_camera_fb_get();
+
+  if (!fb) {
+    Serial.println("Camera capture failed");
+    digitalWrite(4, HIGH);
+    delay(500);
+    digitalWrite(4, LOW);
+    delay(500);
+    digitalWrite(4, HIGH);
+    delay(500);
+    digitalWrite(4, LOW);
+    return;
+  }
+  Serial.println(String(fb->len));
+  delay(100);
+  String inData = readSerialData();
+  while (inData == "") {
+    delay(100);
+    inData = readSerialData();
+  }
+  if (inData.startsWith("ok"))
+  {
+    Serial.write(fb->buf, fb->len);
+    digitalWrite(4, HIGH);
+    delay(100);
+    digitalWrite(4, LOW);
+    delay(100);
+    digitalWrite(4, HIGH);
+    delay(100);
+    digitalWrite(4, LOW);
+    inData = readSerialData();
+    while (inData == "") {
+      delay(100);
+      inData = readSerialData();
+    }
+    if (inData.startsWith("received"))
+    {
+      esp_camera_fb_return(fb);
+      digitalWrite(4, HIGH);
+      delay(100);
+      digitalWrite(4, LOW);
+      //ESP.restart();
+    }
+
+  }
+
+}
+void getTemp()
+{
+  float temp;
+  //Serial.println("Check temp..");
+  //do {
+  DS18B20.requestTemperaturesByIndex(0);
+  temp = DS18B20.getTempCByIndex(0);
+  delay(100);
+  // } while (temp == 85.0 || temp == (-127.0));
+  Serial.println("temp: " + String(temp));
+
+  //delay(2000);
+  //  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+  //  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
+  //  Serial.println("Going to sleep now");
+  //  Serial.flush();
+  //  esp_deep_sleep_start();
+
+}
+void restart()
+{
+  Serial.println("Restarting...");
+  Serial.flush();
+  delay(2000);
+  ESP.restart();
+
+}
+void goToSleep() {
+  Serial.println("Set time to sleep(in seconds)");
+  int timeToSleep = readSerialDataInt();
+  int tries = 20;
+  while (timeToSleep == -1 && tries > 0) {
+    delay(100);
+    timeToSleep = readSerialDataInt();
+    tries--;
+  }
+  if (timeToSleep != -1) {
+    esp_sleep_enable_timer_wakeup(timeToSleep * uS_TO_S_FACTOR);
+    Serial.println("Going to sleep now");
+    Serial.flush();
+    delay(2000);
+    esp_deep_sleep_start();
+  }
+  else
+  {
+    Serial.println("Invalid value");
+  }
+}
+
+void moveCam()
+{
+  Serial.println("Set angle(from 0 to 180)");
+  int angle = readSerialDataInt();
+  int tries = 20;
+  while (angle == -1 && tries > 0) {
+    delay(100);
+    angle = readSerialDataInt();
+    tries--;
+  }
+  if (angle != -1) {
+    Serial.println("go to angle: " + String(angle));
+    Serial.flush();
+    delay(500);
+    servo.write(angle);
+  }
+  else
+  {
+    Serial.println("Invalid value");
+  }
+}
+
 
