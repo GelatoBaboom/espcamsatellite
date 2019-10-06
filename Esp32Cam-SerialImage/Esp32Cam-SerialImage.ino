@@ -289,7 +289,7 @@ void restart()
 void goToSleep() {
   Serial.println("Set time to sleep(in seconds)");
   int timeToSleep = readSerialDataInt();
-  int tries = 20;
+  int tries = 200;
   while (timeToSleep == -1 && tries > 0) {
     delay(100);
     timeToSleep = readSerialDataInt();
@@ -312,7 +312,7 @@ void moveCam()
 {
   Serial.println("Set angle(from 0 to 180)");
   int angle = readSerialDataInt();
-  int tries = 20;
+  int tries = 200;
   while (angle == -1 && tries > 0) {
     delay(100);
     angle = readSerialDataInt();
