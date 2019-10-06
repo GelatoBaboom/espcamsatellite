@@ -1,21 +1,4 @@
 
-
-/*********
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-cam-take-photo-save-microsd-card
-
-  IMPORTANT!!!
-   - Select Board "ESP32 Wrover Module"
-   - Select the Partion Scheme "Huge APP (3MB No OTA)
-   - GPIO 0 must be connected to GND to upload a sketch
-   - After connecting GPIO 0 to GND, press the ESP32-CAM on-board RESET button to put your board in flashing mode
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files.
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-*********/
-
 #include "esp_camera.h"
 #include "esp_timer.h"
 #include "img_converters.h"
@@ -30,7 +13,7 @@
 #include "dl_lib.h"
 #include "driver/rtc_io.h"
 //#include <EEPROM.h>            // read and write from flash memory
-#include <Servo.h>
+#include <ESP32_Servo.h>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -39,7 +22,7 @@
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
-Servo servo;
+Servo servo1;
 
 // define the number of bytes you want to access
 #define EEPROM_SIZE 1
@@ -67,18 +50,21 @@ Servo servo;
 //#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
 
 int pictureNumber = 0;
-
+camera_config_t config;
+bool camInitialized = false;
 void setup() {
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
-
+  //Servo init
+  pinMode(12, OUTPUT);
+  servo1.attach(12);
   //Serial.begin(115200);
   Serial.begin(9600);
   //Serial.setDebugOutput(true);
-
+  //Dallas temp sensor
   DS18B20.begin();
-  servo.attach(13);
 
-  camera_config_t config;
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
+  //Camera configs
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
   config.pin_d0 = Y2_GPIO_NUM;
@@ -101,17 +87,11 @@ void setup() {
   config.pixel_format = PIXFORMAT_JPEG;
 
 
-  config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+  config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
   config.jpeg_quality = 10;
   config.fb_count = 2;
 
 
-  // Init Camera
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
-    return;
-  }
 
   // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
   pinMode(4, OUTPUT);
@@ -123,6 +103,7 @@ void setup() {
   }
   Serial.println("");
   Serial.println("Im awake again!");
+
 }
 void loop() {
 
@@ -130,6 +111,10 @@ void loop() {
   if (inData.startsWith("getImage"))
   {
     getImage();
+  }
+  if (inData.startsWith("setCam"))
+  {
+    setCam();
   }
   if (inData.startsWith("getTemp"))
   {
@@ -185,6 +170,15 @@ int readSerialDataInt() {
 }
 void getImage()
 {
+  if (!camInitialized) {
+    // Init Camera
+    esp_err_t err = esp_camera_init(&config);
+    if (err != ESP_OK) {
+      Serial.printf("Camera init failed with error 0x%x", err);
+      return;
+    }
+    camInitialized = true;
+  }
   digitalWrite(4, HIGH);
   camera_fb_t * fb = NULL;
   // Take Picture with Camera
@@ -235,6 +229,33 @@ void getImage()
       //ESP.restart();
     }
 
+  }
+
+}
+void setCam() {
+  Serial.println("Send config");
+  String inData = readSerialData();
+  while (inData == "") {
+    delay(100);
+    inData = readSerialData();
+  }
+  if (inData.startsWith("flash on"))
+  {
+
+  }
+  if (inData.startsWith("flash off"))
+  {
+
+  }
+  if (inData.startsWith("frame size UXGA"))
+  {
+    config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("Ok UXGA");
+  }
+  if (inData.startsWith("frame size VGA"))
+  {
+    config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("Ok VGA");
   }
 
 }
@@ -298,10 +319,11 @@ void moveCam()
     tries--;
   }
   if (angle != -1) {
-    Serial.println("go to angle: " + String(angle));
+    Serial.println("Go to angle: " + String(angle));
     Serial.flush();
     delay(500);
-    servo.write(angle);
+    servo1.write(angle);
+    Serial.println("Angle: " + String(servo1.read()));
   }
   else
   {
