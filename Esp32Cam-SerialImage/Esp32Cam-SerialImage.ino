@@ -48,10 +48,11 @@ Servo servo1;
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 //#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
-
+framesize_t frame_size = FRAMESIZE_VGA;
 int pictureNumber = 0;
-camera_config_t config;
+
 bool camInitialized = false;
+bool flashLed = false;
 void setup() {
   //Servo init
   pinMode(12, OUTPUT);
@@ -64,39 +65,14 @@ void setup() {
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
-  //Camera configs
-  config.ledc_channel = LEDC_CHANNEL_0;
-  config.ledc_timer = LEDC_TIMER_0;
-  config.pin_d0 = Y2_GPIO_NUM;
-  config.pin_d1 = Y3_GPIO_NUM;
-  config.pin_d2 = Y4_GPIO_NUM;
-  config.pin_d3 = Y5_GPIO_NUM;
-  config.pin_d4 = Y6_GPIO_NUM;
-  config.pin_d5 = Y7_GPIO_NUM;
-  config.pin_d6 = Y8_GPIO_NUM;
-  config.pin_d7 = Y9_GPIO_NUM;
-  config.pin_xclk = XCLK_GPIO_NUM;
-  config.pin_pclk = PCLK_GPIO_NUM;
-  config.pin_vsync = VSYNC_GPIO_NUM;
-  config.pin_href = HREF_GPIO_NUM;
-  config.pin_sscb_sda = SIOD_GPIO_NUM;
-  config.pin_sscb_scl = SIOC_GPIO_NUM;
-  config.pin_pwdn = PWDN_GPIO_NUM;
-  config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
-  config.pixel_format = PIXFORMAT_JPEG;
 
-
-  config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-  config.jpeg_quality = 10;
-  config.fb_count = 2;
 
 
 
   // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
   pinMode(4, OUTPUT);
   for (uint8_t t = 20; t > 0; t--) {
-    digitalWrite(4, HIGH);
+    digitalWrite(4, flashLed ? HIGH : LOW);
     delay(10);
     digitalWrite(4, LOW);
     delay(50);
@@ -171,6 +147,33 @@ int readSerialDataInt() {
 void getImage()
 {
   if (!camInitialized) {
+    //Camera configs
+    camera_config_t config;
+    config.ledc_channel = LEDC_CHANNEL_0;
+    config.ledc_timer = LEDC_TIMER_0;
+    config.pin_d0 = Y2_GPIO_NUM;
+    config.pin_d1 = Y3_GPIO_NUM;
+    config.pin_d2 = Y4_GPIO_NUM;
+    config.pin_d3 = Y5_GPIO_NUM;
+    config.pin_d4 = Y6_GPIO_NUM;
+    config.pin_d5 = Y7_GPIO_NUM;
+    config.pin_d6 = Y8_GPIO_NUM;
+    config.pin_d7 = Y9_GPIO_NUM;
+    config.pin_xclk = XCLK_GPIO_NUM;
+    config.pin_pclk = PCLK_GPIO_NUM;
+    config.pin_vsync = VSYNC_GPIO_NUM;
+    config.pin_href = HREF_GPIO_NUM;
+    config.pin_sscb_sda = SIOD_GPIO_NUM;
+    config.pin_sscb_scl = SIOC_GPIO_NUM;
+    config.pin_pwdn = PWDN_GPIO_NUM;
+    config.pin_reset = RESET_GPIO_NUM;
+    config.xclk_freq_hz = 20000000;
+    config.pixel_format = PIXFORMAT_JPEG;
+
+
+    config.frame_size = frame_size; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    config.jpeg_quality = 10;
+    config.fb_count = 2;
     // Init Camera
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
@@ -179,7 +182,7 @@ void getImage()
     }
     camInitialized = true;
   }
-  digitalWrite(4, HIGH);
+  digitalWrite(4, flashLed ? HIGH : LOW);
   camera_fb_t * fb = NULL;
   // Take Picture with Camera
   delay(700);
@@ -189,11 +192,11 @@ void getImage()
 
   if (!fb) {
     Serial.println("Camera capture failed");
-    digitalWrite(4, HIGH);
+    digitalWrite(4, flashLed ? HIGH : LOW);
     delay(500);
     digitalWrite(4, LOW);
     delay(500);
-    digitalWrite(4, HIGH);
+    digitalWrite(4, flashLed ? HIGH : LOW);
     delay(500);
     digitalWrite(4, LOW);
     return;
@@ -208,11 +211,11 @@ void getImage()
   if (inData.startsWith("ok"))
   {
     Serial.write(fb->buf, fb->len);
-    digitalWrite(4, HIGH);
+    digitalWrite(4, flashLed ? HIGH : LOW);
     delay(100);
     digitalWrite(4, LOW);
     delay(100);
-    digitalWrite(4, HIGH);
+    digitalWrite(4, flashLed ? HIGH : LOW);
     delay(100);
     digitalWrite(4, LOW);
     inData = readSerialData();
@@ -222,15 +225,15 @@ void getImage()
     }
     if (inData.startsWith("received"))
     {
-      esp_camera_fb_return(fb);
-      digitalWrite(4, HIGH);
+
+      digitalWrite(4, flashLed ? HIGH : LOW);
       delay(100);
       digitalWrite(4, LOW);
       //ESP.restart();
     }
 
   }
-
+  esp_camera_fb_return(fb);
 }
 void setCam() {
   Serial.println("Send config");
@@ -241,23 +244,26 @@ void setCam() {
   }
   if (inData.startsWith("flash on"))
   {
-
+    flashLed = true;
+    Serial.println("Ok flash on");
   }
   if (inData.startsWith("flash off"))
   {
-
+    flashLed = false;
+    Serial.println("Ok flash off");
   }
   if (inData.startsWith("frame size UXGA"))
   {
-    config.frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     Serial.println("Ok UXGA");
   }
   if (inData.startsWith("frame size VGA"))
   {
-    config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    //config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     Serial.println("Ok VGA");
   }
-
+  Serial.println("Exit setCam");
 }
 void getTemp()
 {
@@ -283,6 +289,7 @@ void restart()
   Serial.println("Restarting...");
   Serial.flush();
   delay(2000);
+  esp_camera_deinit();
   ESP.restart();
 
 }
