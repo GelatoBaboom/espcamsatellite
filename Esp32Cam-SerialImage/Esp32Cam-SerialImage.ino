@@ -55,8 +55,12 @@ bool camInitialized = false;
 bool flashLed = false;
 void setup() {
   //Servo init
-  pinMode(12, OUTPUT);
-  servo1.attach(12);
+  servo1.attach(12, 550, 2400);
+  // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
+  pinMode(4, OUTPUT);//Flash Led
+  pinMode(14, OUTPUT);//Probably hard reset
+  pinMode(2, OUTPUT);//HC-12 AT Command control
+
   //Serial.begin(115200);
   Serial.begin(9600);
   //Serial.setDebugOutput(true);
@@ -65,18 +69,14 @@ void setup() {
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
-
-
-
-
-  // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
-  pinMode(4, OUTPUT);
+  frame_size = FRAMESIZE_VGA;
   for (uint8_t t = 20; t > 0; t--) {
     digitalWrite(4, flashLed ? HIGH : LOW);
     delay(10);
     digitalWrite(4, LOW);
     delay(50);
   }
+
   Serial.println("");
   Serial.println("Im awake again!");
 
@@ -99,6 +99,10 @@ void loop() {
   if (inData.startsWith("restart"))
   {
     restart();
+  }
+  if (inData.startsWith("reset"))
+  {
+    resetESP();
   }
   if (inData.startsWith("gotoSleep"))
   {
@@ -229,6 +233,7 @@ void getImage()
       digitalWrite(4, flashLed ? HIGH : LOW);
       delay(100);
       digitalWrite(4, LOW);
+
       //ESP.restart();
     }
 
@@ -288,9 +293,18 @@ void restart()
 {
   Serial.println("Restarting...");
   Serial.flush();
+  digitalWrite(2, HIGH);
   delay(2000);
-  esp_camera_deinit();
   ESP.restart();
+
+}
+void resetESP()
+{
+  Serial.println("Reseting...");
+  digitalWrite(14, HIGH);
+  esp_sleep_enable_timer_wakeup(500000);
+  delay(1000);
+  esp_deep_sleep_start();
 
 }
 void goToSleep() {
@@ -329,7 +343,24 @@ void moveCam()
     Serial.println("Go to angle: " + String(angle));
     Serial.flush();
     delay(500);
-    servo1.write(angle);
+    int pos = servo1.read();
+    int p = pos;
+    if (angle < pos) {
+
+      for (uint8_t t = 0; t < (pos - angle ); t++) {
+        p = p - 1;
+        servo1.write(p);
+        delay(10);
+      }
+    } else {
+      int p = pos;
+      for (uint8_t t = 0; t < (angle - pos); t++) {
+        p = p + 1;
+        servo1.write(p);
+        delay(10);
+      }
+    }
+
     Serial.println("Angle: " + String(servo1.read()));
   }
   else
