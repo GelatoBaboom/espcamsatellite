@@ -46,6 +46,11 @@ Servo servo1;
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
+#define GPIO_SERVO 12
+#define GPIO_FLASH 4
+#define GPIO_RESET 14
+#define GPIO_HC12 2
+
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 //#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
 framesize_t frame_size = FRAMESIZE_VGA;
@@ -53,27 +58,34 @@ int pictureNumber = 0;
 
 bool camInitialized = false;
 bool flashLed = false;
+hw_timer_t * timer = NULL;
+
 void setup() {
   //Servo init
-  servo1.attach(12, 550, 2400);
-  // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
-  pinMode(4, OUTPUT);//Flash Led
-  pinMode(14, OUTPUT);//Probably hard reset
-  pinMode(2, OUTPUT);//HC-12 AT Command control
+  servo1.attach(GPIO_SERVO, 550, 2400);
+  pinMode(GPIO_FLASH, OUTPUT);//Flash Led
+  pinMode(GPIO_RESET, OUTPUT);//Probably hard reset
+  pinMode(GPIO_HC12, OUTPUT);//HC-12 AT Command control
 
+  //Serial Init
   //Serial.begin(115200);
   Serial.begin(9600);
   //Serial.setDebugOutput(true);
+  digitalWrite(GPIO_HC12, HIGH);
+
   //Dallas temp sensor
   DS18B20.begin();
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
+  //Set fram config
   frame_size = FRAMESIZE_VGA;
+
+  // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
   for (uint8_t t = 20; t > 0; t--) {
-    digitalWrite(4, flashLed ? HIGH : LOW);
+    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
     delay(10);
-    digitalWrite(4, LOW);
+    digitalWrite(GPIO_FLASH, LOW);
     delay(50);
   }
 
@@ -103,6 +115,10 @@ void loop() {
   if (inData.startsWith("reset"))
   {
     resetESP();
+  }
+  if (inData.startsWith("antDown"))
+  {
+    antennaDown();
   }
   if (inData.startsWith("gotoSleep"))
   {
@@ -186,23 +202,22 @@ void getImage()
     }
     camInitialized = true;
   }
-  digitalWrite(4, flashLed ? HIGH : LOW);
+  digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
   camera_fb_t * fb = NULL;
   // Take Picture with Camera
-  delay(700);
-  digitalWrite(4, LOW);
-  //sin flash
+  delay(100);
   fb = esp_camera_fb_get();
+  digitalWrite(GPIO_FLASH, LOW);
 
   if (!fb) {
     Serial.println("Camera capture failed");
-    digitalWrite(4, flashLed ? HIGH : LOW);
+    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
     delay(500);
-    digitalWrite(4, LOW);
+    digitalWrite(GPIO_FLASH, LOW);
     delay(500);
-    digitalWrite(4, flashLed ? HIGH : LOW);
+    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
     delay(500);
-    digitalWrite(4, LOW);
+    digitalWrite(GPIO_FLASH, LOW);
     return;
   }
   Serial.println(String(fb->len));
@@ -215,13 +230,13 @@ void getImage()
   if (inData.startsWith("ok"))
   {
     Serial.write(fb->buf, fb->len);
-    digitalWrite(4, flashLed ? HIGH : LOW);
+    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
     delay(100);
-    digitalWrite(4, LOW);
+    digitalWrite(GPIO_FLASH, LOW);
     delay(100);
-    digitalWrite(4, flashLed ? HIGH : LOW);
+    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
     delay(100);
-    digitalWrite(4, LOW);
+    digitalWrite(GPIO_FLASH, LOW);
     inData = readSerialData();
     while (inData == "") {
       delay(100);
@@ -230,9 +245,9 @@ void getImage()
     if (inData.startsWith("received"))
     {
 
-      digitalWrite(4, flashLed ? HIGH : LOW);
+      digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
       delay(100);
-      digitalWrite(4, LOW);
+      digitalWrite(GPIO_FLASH, LOW);
 
       //ESP.restart();
     }
@@ -250,6 +265,9 @@ void setCam() {
   if (inData.startsWith("flash on"))
   {
     flashLed = true;
+    digitalWrite(GPIO_FLASH, HIGH);
+    delay(500);
+    digitalWrite(GPIO_FLASH, LOW);
     Serial.println("Ok flash on");
   }
   if (inData.startsWith("flash off"))
@@ -280,20 +298,11 @@ void getTemp()
   delay(100);
   // } while (temp == 85.0 || temp == (-127.0));
   Serial.println("temp: " + String(temp));
-
-  //delay(2000);
-  //  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-  //  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
-  //  Serial.println("Going to sleep now");
-  //  Serial.flush();
-  //  esp_deep_sleep_start();
-
 }
 void restart()
 {
   Serial.println("Restarting...");
   Serial.flush();
-  digitalWrite(2, HIGH);
   delay(2000);
   ESP.restart();
 
@@ -301,12 +310,60 @@ void restart()
 void resetESP()
 {
   Serial.println("Reseting...");
-  digitalWrite(14, HIGH);
-  esp_sleep_enable_timer_wakeup(500000);
+  digitalWrite(GPIO_RESET, HIGH);
+  esp_sleep_enable_timer_wakeup(uS_TO_S_FACTOR / 2);
   delay(1000);
   esp_deep_sleep_start();
 
 }
+void IRAM_ATTR wakeAntenna()
+{
+  resetESP();
+  //  digitalWrite(GPIO_HC12, HIGH);
+  //  if (timer != NULL) {
+  //    timerAlarmDisable(timer);
+  //    timerDetachInterrupt(timer);
+  //    timerEnd(timer);
+  //    timer = NULL;
+  //  }
+  //  delay(500);
+  //  Serial.println("Serial module it's up again");
+}
+void antennaDown()
+{
+  Serial.println("Cutting transmition...");
+  Serial.flush();
+  delay(1000);
+  digitalWrite(GPIO_HC12, LOW);
+  Serial.println("AT+SLEEP");
+  int tries = 200;
+  String atData = readSerialData();
+  while (atData == "" && tries > 0) {
+    delay(100);
+    tries--;
+    atData = readSerialData();
+  }
+  if (atData.startsWith("OK+SLEEP"))
+  {
+    delay(1000);
+
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &wakeAntenna, true);
+    timerAlarmWrite(timer, uS_TO_S_FACTOR * 10, true);
+    timerAlarmEnable(timer);
+
+  }
+  else
+  {
+    Serial.println("Serial module can´t sleep");
+    delay(1000);
+    resetESP();
+  }
+  Serial.println("This message must not being seeing");
+}
+
+
+
 void goToSleep() {
   Serial.println("Set time to sleep(in seconds)");
   int timeToSleep = readSerialDataInt();
@@ -320,8 +377,26 @@ void goToSleep() {
     esp_sleep_enable_timer_wakeup(timeToSleep * uS_TO_S_FACTOR);
     Serial.println("Going to sleep now");
     Serial.flush();
-    delay(2000);
-    esp_deep_sleep_start();
+    delay(1000);
+    digitalWrite(GPIO_HC12, LOW);
+    delay(200);
+    Serial.println("AT+SLEEP");
+    int tries = 200;
+    String atData = readSerialData();
+    while (atData == "" && tries > 0) {
+      delay(100);
+      tries--;
+      atData = readSerialData();
+    }
+    if (atData.startsWith("OK+SLEEP"))
+    {
+      esp_deep_sleep_start();
+    }
+    else
+    {
+      Serial.println("Serial module can´t sleep");
+    }
+
   }
   else
   {
