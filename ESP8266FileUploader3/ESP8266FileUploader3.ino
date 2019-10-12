@@ -46,31 +46,12 @@ void loop() {
     HTTPClient http;
     int httpCode;
 
-    char body[2048];
-    char boundary[32] = "----";
-
-    randomSeed(micros() + analogRead(A0));
-    for (int i = 0; i < 3; i++) {
-      ltoa(random(0x7FFFFFF), boundary + strlen(boundary), 16);
-    }
-
-    Serial.print("[HTTP] begin...\n");
-    // Use posttestserver.com
-    http.begin("http://192.168.1.45:14693/file.ashx");
-    strcpy(body, "multipart/form-data; boundary=");
-    strcat(body, &boundary[2]);
-    Serial.printf("[HTTP] Content-Type: %s\n", body);
-    //http.addHeader("Content-Type", body, false, true);
-    strcpy(body, boundary);
-    strcat_P(body, CONTENT_HEADERS);
-    int content_length = strlen(body);
-
     int total_read = 0;
     cleanSerialBuffer();
     Serial.println("setCam");
     delay(700);
     //cleanSerialBuffer();
-    Serial.println("frame size SXGA");
+    Serial.println("frame size UXGA");// FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     delay(700);
     //cleanSerialBuffer();
     Serial.println("setCam");
@@ -78,7 +59,7 @@ void loop() {
     //cleanSerialBuffer();
     Serial.println("flash on");
     delay(700);
-    
+
     cleanSerialBuffer();
     Serial.println("getImage");
     int length = -1;
@@ -89,65 +70,22 @@ void loop() {
       delay(100);
       length = readSerialDataInt();
     }
-
-    http.addHeader("Content-Type", "image/jpg", false, true);
-    //httpCode = http.POST("title=foo&body=bar&userId=1");
-
     cleanSerialBuffer();
     Serial.println("ok");
-//    while (Serial.available() == 0) {
-//
-//      digitalWrite(LED_BUILTIN, LOW);
-//      delay(500);
-//      digitalWrite(LED_BUILTIN, HIGH);
-//      delay(500);
-//    }
-    //    int bufFill = 0;
-    //    byte buffer[length];
-    //    while (bufFill < length) {
-    //      Serial.println(bufFill);
-    //      int chunk = Serial.available();
-    //      Serial.readBytes(buffer, chunk );
-    //      bufFill += chunk ;
-    //    }
-    //    http.sendRequest("POST", buffer, length );
-    http.sendRequest("POST", &Serial, length );
-    //    while (length) {
-    //      size_t will_copy = (length < bufferSize) ? length : bufferSize;
-    //      //SPI.transferBytes(&buffer[0], &buffer[0], will_copy);
-    //      char fileChunk [bufferSize];
-    //      will_copy = Serial.readBytes(fileChunk, bufferSize);
-    //      if (!client.connected()) break;
-    //      client.write(fileChunk, will_copy);
-    //          http.writeToStream(&Serial);
-    //      length -= will_copy;
-    //    }
 
+    //Serial.write(buffer, chunk);
+    http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
+    http.addHeader("Content-Type", "image/jpg", false, true);
+    httpCode = http.sendRequest("POST", &Serial, length );
+    if (httpCode == HTTP_CODE_OK) {
+      //Serial.println("ok http");
+    } else {
+      //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    }
+    http.end();
 
     Serial.println("received");
 
-
-
-
-
-
-
-
-    // httpCode will be negative on error
-    if (httpCode > 0) {
-      // HTTP header has been send and Server response header has been handled
-      Serial.printf("[HTTP] POST... code: %d\n", httpCode);
-
-      // file found at server
-      if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
-        Serial.println(payload);
-      }
-    } else {
-      Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
-    }
-
-    http.end();
   }
 
   delay(30000);

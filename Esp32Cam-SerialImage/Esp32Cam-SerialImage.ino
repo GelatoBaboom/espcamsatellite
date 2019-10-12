@@ -229,7 +229,23 @@ void getImage()
   }
   if (inData.startsWith("ok"))
   {
-    Serial.write(fb->buf, fb->len);
+    //Serial.write(fb->buf, fb->len);
+    int position = 0 ;
+    int length  = fb->len;
+    const uint8_t *data = fb->buf;
+    while (position < length /*&& inData.startsWith("ok")*/) {
+
+      int bufLength = ((position + 255) > length) ? length - position : 255;
+      Serial.write(&data[position], bufLength);
+      //position = ((position + bufLength) >= length) ? position + bufLength :  position;
+      position += bufLength;
+      Serial.flush();
+//      while (inData == "") {
+//        delay(100);
+//        inData = readSerialData();
+//      }
+    }
+
     digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
     delay(100);
     digitalWrite(GPIO_FLASH, LOW);
