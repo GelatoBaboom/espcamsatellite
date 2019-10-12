@@ -67,6 +67,19 @@ void loop() {
 
     int total_read = 0;
     cleanSerialBuffer();
+    Serial.println("setCam");
+    delay(700);
+    //cleanSerialBuffer();
+    Serial.println("frame size SXGA");
+    delay(700);
+    //cleanSerialBuffer();
+    Serial.println("setCam");
+    delay(700);
+    //cleanSerialBuffer();
+    Serial.println("flash on");
+    delay(700);
+    
+    cleanSerialBuffer();
     Serial.println("getImage");
     int length = -1;
     while (length == -1) {
@@ -206,4 +219,5 @@ char * copySerial()
   }
   return buf;
 }
+
 

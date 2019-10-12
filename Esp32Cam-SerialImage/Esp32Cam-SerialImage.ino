@@ -280,6 +280,21 @@ void setCam() {
     frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     Serial.println("Ok UXGA");
   }
+  if (inData.startsWith("frame size SXGA"))
+  {
+    frame_size = FRAMESIZE_SXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("Ok SXGA");
+  }
+  if (inData.startsWith("frame size XGA"))
+  {
+    frame_size = FRAMESIZE_XGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("Ok XGA");
+  }
+  if (inData.startsWith("frame size SVGA"))
+  {
+    frame_size = FRAMESIZE_SVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("Ok SVGA");
+  }
   if (inData.startsWith("frame size VGA"))
   {
     //config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
