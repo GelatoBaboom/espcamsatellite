@@ -57,14 +57,32 @@ framesize_t frame_size = FRAMESIZE_VGA;
 int pictureNumber = 0;
 
 bool camInitialized = false;
-bool flashLed = false;
+bool flashOn = false;
+bool witnessOn = true;
 hw_timer_t * timer = NULL;
 
+// Tilt the ESP32-CAM white on-board LED (flash) Function
+void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned long  delayCycle) {
+  bool rise = true;
+  uint8_t cycles = 0;
+
+  for (int dutyCycle = (minRiseVal + 1); rise == (dutyCycle <= (rise ? (maxRiseVal + 1) : (minRiseVal - 1))); (rise ? dutyCycle++ : dutyCycle--) ) {
+    ledcWrite(0, dutyCycle);
+    if ((dutyCycle == maxRiseVal || dutyCycle == minRiseVal) && cycles < ((maxCycles * 2) + 1)) {
+      rise = !rise ;
+      cycles++;
+    }
+    delayMicroseconds(delayCycle);
+  }
+  ledcWrite(0, 0);
+}
 void setup() {
   //Servo init
   servo1.attach(GPIO_SERVO, 550, 2400);
   pinMode(GPIO_FLASH, OUTPUT);//Flash Led
-  pinMode(GPIO_RESET, OUTPUT);//Probably hard reset
+  //pinMode(GPIO_RESET, OUTPUT);//Probably hard reset
+  ledcSetup(0, 5000, 8);
+  ledcAttachPin(GPIO_RESET, 0);//test led
   pinMode(GPIO_HC12, OUTPUT);//HC-12 AT Command control
 
   //Serial Init
@@ -82,12 +100,7 @@ void setup() {
   frame_size = FRAMESIZE_VGA;
 
   // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
-  for (uint8_t t = 20; t > 0; t--) {
-    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
-    delay(10);
-    digitalWrite(GPIO_FLASH, LOW);
-    delay(50);
-  }
+  tiltLed(30, 255, 10, 500);
 
   Serial.println("");
   Serial.println("Im awake again!");
@@ -202,24 +215,18 @@ void getImage()
     }
     camInitialized = true;
   }
-  digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
+  digitalWrite(GPIO_FLASH, flashOn ? HIGH : LOW);
   camera_fb_t * fb = NULL;
   // Take Picture with Camera
   delay(100);
   fb = esp_camera_fb_get();
   digitalWrite(GPIO_FLASH, LOW);
-
   if (!fb) {
     Serial.println("Camera capture failed");
-    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
-    delay(500);
-    digitalWrite(GPIO_FLASH, LOW);
-    delay(500);
-    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
-    delay(500);
-    digitalWrite(GPIO_FLASH, LOW);
+    if (witnessOn) tiltLed(0, 255, 4, 1000);
     return;
   }
+  if (witnessOn) tiltLed(0, 255, 1, 1000);
   Serial.println(String(fb->len));
   delay(100);
   String inData = readSerialData();
@@ -240,19 +247,9 @@ void getImage()
       //position = ((position + bufLength) >= length) ? position + bufLength :  position;
       position += bufLength;
       Serial.flush();
-//      while (inData == "") {
-//        delay(100);
-//        inData = readSerialData();
-//      }
     }
 
-    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
-    delay(100);
-    digitalWrite(GPIO_FLASH, LOW);
-    delay(100);
-    digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
-    delay(100);
-    digitalWrite(GPIO_FLASH, LOW);
+    if (witnessOn) tiltLed(50, 255, 2, 1000);
     inData = readSerialData();
     while (inData == "") {
       delay(100);
@@ -260,11 +257,7 @@ void getImage()
     }
     if (inData.startsWith("received"))
     {
-
-      digitalWrite(GPIO_FLASH, flashLed ? HIGH : LOW);
-      delay(100);
-      digitalWrite(GPIO_FLASH, LOW);
-
+      if (witnessOn) tiltLed(0, 255, 1, 1000);
       //ESP.restart();
     }
 
@@ -280,7 +273,7 @@ void setCam() {
   }
   if (inData.startsWith("flash on"))
   {
-    flashLed = true;
+    flashOn = true;
     digitalWrite(GPIO_FLASH, HIGH);
     delay(500);
     digitalWrite(GPIO_FLASH, LOW);
@@ -288,7 +281,7 @@ void setCam() {
   }
   if (inData.startsWith("flash off"))
   {
-    flashLed = false;
+    flashOn = false;
     Serial.println("Ok flash off");
   }
   if (inData.startsWith("frame size UXGA"))
@@ -474,5 +467,6 @@ void moveCam()
     Serial.println("Invalid value");
   }
 }
+
 
 
