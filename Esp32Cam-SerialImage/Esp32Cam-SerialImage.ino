@@ -67,22 +67,22 @@ void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned lon
   uint8_t cycles = 0;
 
   for (int dutyCycle = (minRiseVal + 1); rise == (dutyCycle <= (rise ? (maxRiseVal + 1) : (minRiseVal - 1))); (rise ? dutyCycle++ : dutyCycle--) ) {
-    ledcWrite(0, dutyCycle);
+    ledcWrite(2, dutyCycle);
     if ((dutyCycle == maxRiseVal || dutyCycle == minRiseVal) && cycles < ((maxCycles * 2) + 1)) {
       rise = !rise ;
       cycles++;
     }
     delayMicroseconds(delayCycle);
   }
-  ledcWrite(0, 0);
+  ledcWrite(2, 0);
 }
 void setup() {
   //Servo init
   servo1.attach(GPIO_SERVO, 550, 2400);
   pinMode(GPIO_FLASH, OUTPUT);//Flash Led
   //pinMode(GPIO_RESET, OUTPUT);//Probably hard reset
-  ledcSetup(0, 5000, 8);
-  ledcAttachPin(GPIO_RESET, 0);//test led
+  ledcAttachPin(GPIO_RESET, 2);//test led
+  ledcSetup(2, 5000, 8);
   pinMode(GPIO_HC12, OUTPUT);//HC-12 AT Command control
 
   //Serial Init
