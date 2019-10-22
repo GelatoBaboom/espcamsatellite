@@ -227,7 +227,10 @@ void getImage()
     return;
   }
   if (witnessOn) tiltLed(0, 255, 1, 1000);
+  delay(500);
+
   Serial.println(String(fb->len));
+
   delay(100);
   String inData = readSerialData();
   while (inData == "") {
@@ -236,6 +239,7 @@ void getImage()
   }
   if (inData.startsWith("ok"))
   {
+    ledcWrite(2, 150);
     //Serial.write(fb->buf, fb->len);
     int position = 0 ;
     int length  = fb->len;
@@ -248,7 +252,7 @@ void getImage()
       position += bufLength;
       Serial.flush();
     }
-
+    ledcWrite(2, 0);
     if (witnessOn) tiltLed(50, 255, 2, 1000);
     inData = readSerialData();
     while (inData == "") {
@@ -309,6 +313,20 @@ void setCam() {
     //config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     Serial.println("Ok VGA");
+  }
+  if (inData.startsWith("bright"))
+  {
+    Serial.println("Send value");
+    int br = readSerialDataInt();
+    int tries = 200;
+    while (br == -1 && tries > 0) {
+      delay(100);
+      br = readSerialDataInt();
+      tries--;
+    }
+    sensor_t * s = esp_camera_sensor_get();
+    s->set_brightness(s, br);
+
   }
   Serial.println("Exit setCam");
 }

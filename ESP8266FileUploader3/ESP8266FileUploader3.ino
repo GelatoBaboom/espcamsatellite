@@ -16,9 +16,6 @@
 #include <ESP8266HTTPClient.h>
 //#define Serial Serial
 ESP8266WiFiMulti WiFiMulti;
-const char PROGMEM CONTENT_HEADERS[] =
-  "\r\nContent-Disposition: form-data; name=\"testfile\"; filename=\"image.jpg\"\r\n"
-  "Content-Type: image/jpeg\r\n\r\n";
 
 void setup() {
   //Serial.begin(115200);
@@ -27,9 +24,6 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.println();
-  Serial.println();
-  Serial.println();
-
   for (uint8_t t = 4; t > 0; t--) {
     Serial.printf("[SETUP] WAIT %d...\n", t);
     Serial.flush();
@@ -41,55 +35,118 @@ void setup() {
 
 void loop() {
   // wait for WiFi connection
-  if ((WiFiMulti.run() == WL_CONNECTED)) {
-
-    HTTPClient http;
-    int httpCode;
-
-    int total_read = 0;
-    cleanSerialBuffer();
-    Serial.println("setCam");
-    delay(700);
-    //cleanSerialBuffer();
-    Serial.println("frame size UXGA");// FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-    delay(700);
-    //cleanSerialBuffer();
-    Serial.println("setCam");
-    delay(700);
-    //cleanSerialBuffer();
-    Serial.println("flash on");
-    delay(700);
-
+  while (WiFiMulti.run() != WL_CONNECTED) {
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+  }
+  cleanSerialBuffer();
+  Serial.println("areYouThere");
+  int tries = 10;
+  String inData = "";
+  while (inData == "" && tries > 0) {
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    inData = readSerialData();
+    tries--;
+  }
+  if (inData.startsWith("Im here")) //Camera capture failed
+  {
     cleanSerialBuffer();
     Serial.println("getImage");
-    int length = -1;
-    while (length == -1) {
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(100);
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(100);
-      length = readSerialDataInt();
-    }
-    cleanSerialBuffer();
-    Serial.println("ok");
-
-    //Serial.write(buffer, chunk);
-    http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
-    http.addHeader("Content-Type", "image/jpg", false, true);
-    httpCode = http.sendRequest("POST", &Serial, length );
-    if (httpCode == HTTP_CODE_OK) {
-      //Serial.println("ok http");
-    } else {
-      //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
-    }
-    http.end();
-
-    Serial.println("received");
-
+    delay(700);
+    Serial.println("no");// FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    delay(700);
+    Serial.println("setCam");
+    delay(700);
+    Serial.println("bright");
+    delay(700);
+    Serial.println("-5");
+    delay(700);
+    getImage();
+    delay(5000);
+    Serial.println("reset");
+    delay(15000);
+  } else
+  {
+    delay(5000);
   }
 
-  delay(30000);
 }
+
+void getImage()
+{
+  HTTPClient http;
+  int httpCode;
+
+  int total_read = 0;
+  //cleanSerialBuffer();
+  //    Serial.println("setCam");
+  //  delay(700);
+  //    Serial.println("frame size VGA");// FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+  //  delay(700);
+  //    Serial.println("setCam");
+  //  delay(700);
+  //    Serial.println("flash off");
+  //  delay(700);
+
+  cleanSerialBuffer();
+  Serial.println("getImage");
+  int length = -1;
+  String inData = "";
+  while (inData == "") {
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    inData = readSerialData();
+  }
+  if (inData.startsWith("Camera") || inData.startsWith("[E]")) //Camera capture failed
+  {
+    Serial.println("Error: " + inData);
+    delay(700);
+    return;
+  }
+  else
+  {
+    length = inData.toInt();
+  }
+
+  //  while (length == -1) {
+  //  digitalWrite(LED_BUILTIN, LOW);
+  //    delay(100);
+  //    digitalWrite(LED_BUILTIN, HIGH);
+  //    delay(100);
+  //    length = readSerialDataInt();
+  //  }
+  cleanSerialBuffer();
+
+  Serial.println("ok " + inData);
+
+  //Serial.write(buffer, chunk);
+  digitalWrite(LED_BUILTIN, LOW);
+  http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
+  //http.begin("http://img.monodev.tk/fileStreamEnterly.ashx");
+  http.addHeader("Content-Type", "image/jpg", false, true);
+  httpCode = http.sendRequest("POST", &Serial, length );
+  if (httpCode == HTTP_CODE_OK) {
+    //Serial.println("ok http");
+  } else {
+    //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+  }
+  http.end();
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println("received");
+}
+
+
 void cleanSerialBuffer() {
   while (Serial.available() > 0) {
     int inChar = Serial.read();
@@ -121,6 +178,9 @@ int readSerialDataInt() {
       if (isDigit(inChar)) {
         // convert the incoming byte to a char and add it to the string:
         inString += (char)inChar;
+      } else
+      {
+        return -2;
       }
       //Serial.print((char)inChar);
       // if you get a newline, print the string, then the string's value:
