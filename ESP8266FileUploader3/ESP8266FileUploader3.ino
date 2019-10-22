@@ -60,10 +60,6 @@ void loop() {
   if (inData.startsWith("Im here")) //Camera capture failed
   {
     cleanSerialBuffer();
-    Serial.println("getImage");
-    delay(700);
-    Serial.println("no");// FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-    delay(700);
     Serial.println("setCam");
     delay(700);
     Serial.println("bright");

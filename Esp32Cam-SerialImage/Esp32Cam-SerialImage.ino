@@ -177,7 +177,7 @@ int readSerialDataInt() {
   }
   return -1;
 }
-void getImage()
+void initCam()
 {
   if (!camInitialized) {
     //Camera configs
@@ -215,6 +215,10 @@ void getImage()
     }
     camInitialized = true;
   }
+  }
+void getImage()
+{
+  initCam();
   digitalWrite(GPIO_FLASH, flashOn ? HIGH : LOW);
   camera_fb_t * fb = NULL;
   // Take Picture with Camera
@@ -324,6 +328,7 @@ void setCam() {
       br = readSerialDataInt();
       tries--;
     }
+    initCam();
     sensor_t * s = esp_camera_sensor_get();
     s->set_brightness(s, br);
 
