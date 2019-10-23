@@ -17,6 +17,14 @@
 //#define Serial Serial
 ESP8266WiFiMulti WiFiMulti;
 
+void blinkLed(uint8_t maxCycles, unsigned long  delayCycle) {
+  for (uint8_t cycles = 0; cycles < maxCycles; cycles++ ) {
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(delayCycle);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(delayCycle);
+  }
+}
 void setup() {
   //Serial.begin(115200);
   Serial.begin(9600);
@@ -27,32 +35,24 @@ void setup() {
   for (uint8_t t = 4; t > 0; t--) {
     Serial.printf("[SETUP] WAIT %d...\n", t);
     Serial.flush();
-    delay(1000);
+    blinkLed(5, 100);
+    delay(500);
   }
 
   WiFiMulti.addAP("GelatoBaboom", "friofrio");
 }
-
 void loop() {
   // wait for WiFi connection
   while (WiFiMulti.run() != WL_CONNECTED) {
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(1000);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(1000);
+    blinkLed(2, 1000);
   }
-  cleanSerialBuffer();
-  Serial.println("areYouThere");
+
   int tries = 10;
   String inData = "";
   while (inData == "" && tries > 0) {
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
-    digitalWrite(LED_BUILTIN, HIGH);
+    blinkLed(2, 100);
+    cleanSerialBuffer();
+    Serial.println("areYouThere");
     delay(1000);
     inData = readSerialData();
     tries--;
@@ -62,13 +62,17 @@ void loop() {
     cleanSerialBuffer();
     Serial.println("setCam");
     delay(700);
+    Serial.println("frame size XGA");//FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    delay(700);
+    Serial.println("setCam");
+    delay(700);
     Serial.println("bright");
     delay(700);
     Serial.println("-5");
     delay(700);
     getImage();
     delay(5000);
-    Serial.println("reset");
+    //Serial.println("reset");
     delay(15000);
   } else
   {
@@ -83,25 +87,12 @@ void getImage()
   int httpCode;
 
   int total_read = 0;
-  //cleanSerialBuffer();
-  //    Serial.println("setCam");
-  //  delay(700);
-  //    Serial.println("frame size VGA");// FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-  //  delay(700);
-  //    Serial.println("setCam");
-  //  delay(700);
-  //    Serial.println("flash off");
-  //  delay(700);
-
-  cleanSerialBuffer();
+   cleanSerialBuffer();
   Serial.println("getImage");
   int length = -1;
   String inData = "";
   while (inData == "") {
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
+    blinkLed(2, 100);
     inData = readSerialData();
   }
   if (inData.startsWith("Camera") || inData.startsWith("[E]")) //Camera capture failed
@@ -114,7 +105,10 @@ void getImage()
   {
     length = inData.toInt();
   }
-
+  if (length == 0) {
+    Serial.println("Error: " + inData);
+    return;
+  }
   //  while (length == -1) {
   //  digitalWrite(LED_BUILTIN, LOW);
   //    delay(100);
@@ -128,8 +122,8 @@ void getImage()
 
   //Serial.write(buffer, chunk);
   digitalWrite(LED_BUILTIN, LOW);
-  http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
-  //http.begin("http://img.monodev.tk/fileStreamEnterly.ashx");
+  //http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
+  http.begin("http://img.monodev.tk/fileStreamEnterly.ashx");
   http.addHeader("Content-Type", "image/jpg", false, true);
   httpCode = http.sendRequest("POST", &Serial, length );
   if (httpCode == HTTP_CODE_OK) {

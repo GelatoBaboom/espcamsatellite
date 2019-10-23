@@ -68,7 +68,7 @@ void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned lon
 
   for (int dutyCycle = (minRiseVal + 1); rise == (dutyCycle <= (rise ? (maxRiseVal + 1) : (minRiseVal - 1))); (rise ? dutyCycle++ : dutyCycle--) ) {
     ledcWrite(2, dutyCycle);
-    if ((dutyCycle == maxRiseVal || dutyCycle == minRiseVal) && cycles < ((maxCycles * 2) + 1)) {
+    if ((dutyCycle == maxRiseVal || dutyCycle == minRiseVal) && cycles < ((maxCycles * 2) - 1)) {
       rise = !rise ;
       cycles++;
     }
@@ -166,8 +166,7 @@ int readSerialDataInt() {
     String inString = "";
     while (Serial.available() > 0) {
       int inChar = Serial.read();
-      if (isDigit(inChar)) {
-
+      if (isDigit(inChar)||inChar=='-') {
         inString += (char)inChar;
       }
       if (inChar == '\n') {
@@ -214,11 +213,15 @@ void initCam()
       return;
     }
     camInitialized = true;
+    //    sensor_t * s = esp_camera_sensor_get();
+    //    s->set_vflip(s, 1);
+    //    s->set_hmirror(s, 1);
   }
-  }
+}
 void getImage()
 {
   initCam();
+
   digitalWrite(GPIO_FLASH, flashOn ? HIGH : LOW);
   camera_fb_t * fb = NULL;
   // Take Picture with Camera
@@ -273,6 +276,8 @@ void getImage()
   esp_camera_fb_return(fb);
 }
 void setCam() {
+  initCam();
+  sensor_t * s = esp_camera_sensor_get();
   Serial.println("Send config");
   String inData = readSerialData();
   while (inData == "") {
@@ -294,28 +299,33 @@ void setCam() {
   }
   if (inData.startsWith("frame size UXGA"))
   {
-    frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    //frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    s->set_framesize(s, FRAMESIZE_UXGA);
     Serial.println("Ok UXGA");
   }
   if (inData.startsWith("frame size SXGA"))
   {
-    frame_size = FRAMESIZE_SXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    //frame_size = FRAMESIZE_SXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    s->set_framesize(s, FRAMESIZE_SXGA);
     Serial.println("Ok SXGA");
   }
   if (inData.startsWith("frame size XGA"))
   {
-    frame_size = FRAMESIZE_XGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    //frame_size = FRAMESIZE_XGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    s->set_framesize(s, FRAMESIZE_XGA);
     Serial.println("Ok XGA");
   }
   if (inData.startsWith("frame size SVGA"))
   {
-    frame_size = FRAMESIZE_SVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    //frame_size = FRAMESIZE_SVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    s->set_framesize(s, FRAMESIZE_SVGA);
     Serial.println("Ok SVGA");
   }
   if (inData.startsWith("frame size VGA"))
   {
-    //config.frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-    frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+
+    //frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    s->set_framesize(s, FRAMESIZE_VGA);
     Serial.println("Ok VGA");
   }
   if (inData.startsWith("bright"))
@@ -328,9 +338,9 @@ void setCam() {
       br = readSerialDataInt();
       tries--;
     }
-    initCam();
-    sensor_t * s = esp_camera_sensor_get();
+
     s->set_brightness(s, br);
+    Serial.println("Brightness set " + String(br));
 
   }
   Serial.println("Exit setCam");
