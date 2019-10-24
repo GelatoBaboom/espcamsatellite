@@ -68,7 +68,7 @@ void loop() {
     delay(700);
     Serial.println("bright");
     delay(700);
-    Serial.println("-5");
+    Serial.println("-2");
     delay(700);
     getImage2();
     delay(5000);
@@ -115,7 +115,7 @@ void getImage2()
   //Serial.write(buffer, chunk);
   digitalWrite(LED_BUILTIN, LOW);
   int bytesReaded = 0;
-  while (bytesReaded < length) {
+  while (bytesReaded < length ) {
     int chunkLength =  Serial.available() ;
     if (chunkLength > 0) {
       uint8_t data[chunkLength];
@@ -134,6 +134,21 @@ void getImage2()
   }
   digitalWrite(LED_BUILTIN, HIGH);
   Serial.println("received");
+  endFile();
+}
+void endFile()
+{
+  HTTPClient http;
+  int httpCode;
+  http.begin("http://192.168.1.45:14693/endFile.ashx");
+  http.addHeader("Content-Type", "text/plain");
+  httpCode = http.POST("Message from ESP8266");
+  if (httpCode == HTTP_CODE_OK) {
+    //Serial.println("ok http");
+  } else {
+    //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+  }
+  http.end();
 }
 void getImage()
 {

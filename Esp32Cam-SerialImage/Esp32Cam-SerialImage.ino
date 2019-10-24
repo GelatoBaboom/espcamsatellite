@@ -61,7 +61,7 @@ bool flashOn = false;
 bool witnessOn = true;
 hw_timer_t * timer = NULL;
 
-// Tilt the ESP32-CAM white on-board LED (flash) Function
+// Tilt the ESP32-CAM external LED Function
 void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned long  delayCycle) {
   bool rise = true;
   uint8_t cycles = 0;
@@ -97,9 +97,9 @@ void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
   //Set fram config
-  frame_size = FRAMESIZE_VGA;
+  frame_size = FRAMESIZE_UXGA;
 
-  // tilt the ESP32-CAM white on-board LED (flash) connected to GPIO 4
+  // tilt the LED
   tiltLed(30, 255, 10, 500);
 
   Serial.println("");
@@ -166,7 +166,7 @@ int readSerialDataInt() {
     String inString = "";
     while (Serial.available() > 0) {
       int inChar = Serial.read();
-      if (isDigit(inChar)||inChar=='-') {
+      if (isDigit(inChar) || inChar == '-') {
         inString += (char)inChar;
       }
       if (inChar == '\n') {
@@ -174,7 +174,7 @@ int readSerialDataInt() {
       }
     }
   }
-  return -1;
+  return -1000;
 }
 void initCam()
 {
@@ -299,50 +299,76 @@ void setCam() {
   }
   if (inData.startsWith("frame size UXGA"))
   {
-    //frame_size = FRAMESIZE_UXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     s->set_framesize(s, FRAMESIZE_UXGA);
     Serial.println("Ok UXGA");
   }
   if (inData.startsWith("frame size SXGA"))
   {
-    //frame_size = FRAMESIZE_SXGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     s->set_framesize(s, FRAMESIZE_SXGA);
     Serial.println("Ok SXGA");
   }
   if (inData.startsWith("frame size XGA"))
   {
-    //frame_size = FRAMESIZE_XGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     s->set_framesize(s, FRAMESIZE_XGA);
     Serial.println("Ok XGA");
   }
   if (inData.startsWith("frame size SVGA"))
   {
-    //frame_size = FRAMESIZE_SVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     s->set_framesize(s, FRAMESIZE_SVGA);
     Serial.println("Ok SVGA");
   }
   if (inData.startsWith("frame size VGA"))
   {
-
-    //frame_size = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     s->set_framesize(s, FRAMESIZE_VGA);
     Serial.println("Ok VGA");
   }
   if (inData.startsWith("bright"))
   {
     Serial.println("Send value");
-    int br = readSerialDataInt();
+    int v = readSerialDataInt();
     int tries = 200;
-    while (br == -1 && tries > 0) {
+    while (v == -1000 && tries > 0) {
       delay(100);
-      br = readSerialDataInt();
+      v = readSerialDataInt();
       tries--;
     }
 
-    s->set_brightness(s, br);
-    Serial.println("Brightness set " + String(br));
+    s->set_brightness(s, v);
+    Serial.println("Brightness set " + String(v));
 
   }
+  if (inData.startsWith("exposure"))
+  {
+    Serial.println("Send value");
+    int v = readSerialDataInt();
+    int tries = 200;
+    while (v == -1000 && tries > 0) {
+      delay(100);
+      v = readSerialDataInt();
+      tries--;
+    }
+
+    s->set_exposure_ctrl(s, v);
+    Serial.println("Exposure set " + String(v));
+
+  }
+
+  if (inData.startsWith("flip"))
+  {
+    Serial.println("Send value");
+    int v = readSerialDataInt();
+    int tries = 200;
+    while (v == -1000 && tries > 0) {
+      delay(100);
+      v = readSerialDataInt();
+      tries--;
+    }
+
+    s->set_vflip(s, v);
+    Serial.println("Flip set " + String(v));
+  }
+
+  //End configs
   Serial.println("Exit setCam");
 }
 void getTemp()
@@ -425,12 +451,12 @@ void goToSleep() {
   Serial.println("Set time to sleep(in seconds)");
   int timeToSleep = readSerialDataInt();
   int tries = 200;
-  while (timeToSleep == -1 && tries > 0) {
+  while (timeToSleep == -1000 && tries > 0) {
     delay(100);
     timeToSleep = readSerialDataInt();
     tries--;
   }
-  if (timeToSleep != -1) {
+  if (timeToSleep != -1000) {
     esp_sleep_enable_timer_wakeup(timeToSleep * uS_TO_S_FACTOR);
     Serial.println("Going to sleep now");
     Serial.flush();
@@ -466,12 +492,12 @@ void moveCam()
   Serial.println("Set angle(from 0 to 180)");
   int angle = readSerialDataInt();
   int tries = 200;
-  while (angle == -1 && tries > 0) {
+  while (angle == -1000 && tries > 0) {
     delay(100);
     angle = readSerialDataInt();
     tries--;
   }
-  if (angle != -1) {
+  if (angle != -1000) {
     Serial.println("Go to angle: " + String(angle));
     Serial.flush();
     delay(500);
