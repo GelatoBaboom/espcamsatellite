@@ -62,7 +62,7 @@ void loop() {
     cleanSerialBuffer();
     Serial.println("setCam");
     delay(700);
-    Serial.println("frame size XGA");//FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("frame size UXGA");//FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     delay(700);
     Serial.println("setCam");
     delay(700);
@@ -70,7 +70,7 @@ void loop() {
     delay(700);
     Serial.println("-5");
     delay(700);
-    getImage();
+    getImage2();
     delay(5000);
     //Serial.println("reset");
     delay(15000);
@@ -80,14 +80,13 @@ void loop() {
   }
 
 }
-
-void getImage()
+void getImage2()
 {
   HTTPClient http;
   int httpCode;
 
   int total_read = 0;
-   cleanSerialBuffer();
+  cleanSerialBuffer();
   Serial.println("getImage");
   int length = -1;
   String inData = "";
@@ -109,17 +108,63 @@ void getImage()
     Serial.println("Error: " + inData);
     return;
   }
-  //  while (length == -1) {
-  //  digitalWrite(LED_BUILTIN, LOW);
-  //    delay(100);
-  //    digitalWrite(LED_BUILTIN, HIGH);
-  //    delay(100);
-  //    length = readSerialDataInt();
-  //  }
   cleanSerialBuffer();
-
   Serial.println("ok " + inData);
 
+
+  //Serial.write(buffer, chunk);
+  digitalWrite(LED_BUILTIN, LOW);
+  int bytesReaded = 0;
+  while (bytesReaded < length) {
+    int chunkLength =  Serial.available() ;
+    if (chunkLength > 0) {
+      uint8_t data[chunkLength];
+      Serial.readBytes(data, chunkLength);
+      bytesReaded += chunkLength;
+      http.begin("http://192.168.1.45:14693/file.ashx");
+      http.addHeader("Content-Type", "image/jpg", false, true);
+      httpCode = http.sendRequest("POST", &data[0], chunkLength );
+      if (httpCode == HTTP_CODE_OK) {
+        //Serial.println("ok http");
+      } else {
+        //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+      }
+      http.end();
+    }
+  }
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println("received");
+}
+void getImage()
+{
+  HTTPClient http;
+  int httpCode;
+
+  int total_read = 0;
+  cleanSerialBuffer();
+  Serial.println("getImage");
+  int length = -1;
+  String inData = "";
+  while (inData == "") {
+    blinkLed(2, 100);
+    inData = readSerialData();
+  }
+  if (inData.startsWith("Camera") || inData.startsWith("[E]")) //Camera capture failed
+  {
+    Serial.println("Error: " + inData);
+    delay(700);
+    return;
+  }
+  else
+  {
+    length = inData.toInt();
+  }
+  if (length == 0) {
+    Serial.println("Error: " + inData);
+    return;
+  }
+  cleanSerialBuffer();
+  Serial.println("ok " + inData);
   //Serial.write(buffer, chunk);
   digitalWrite(LED_BUILTIN, LOW);
   //http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
