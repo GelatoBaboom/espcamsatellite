@@ -27,7 +27,7 @@ void blinkLed(uint8_t maxCycles, unsigned long  delayCycle) {
 }
 void setup() {
   //Serial.begin(115200);
-  Serial.begin(9600);
+  Serial.begin(2400);
   // Serial.setDebugOutput(true);
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -62,7 +62,7 @@ void loop() {
     cleanSerialBuffer();
     Serial.println("setCam");
     delay(700);
-    Serial.println("frame size UXGA");//FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+    Serial.println("frame size VGA");//FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
     delay(700);
     Serial.println("setCam");
     delay(700);
@@ -71,9 +71,11 @@ void loop() {
     Serial.println("-2");
     delay(700);
     getImage2();
-    delay(5000);
+
     //Serial.println("reset");
     delay(15000);
+    blinkLed(2, 500);
+    //ESP.reset();
   } else
   {
     delay(5000);
@@ -117,27 +119,40 @@ void getImage2()
 
   int connLostTries = 200;
   int bytesReaded = 0;
+  //delay(3000);
   while (bytesReaded < length ) {
-
-
     int chunkLength =  Serial.available() ;
-    if (chunkLength > 0) {
+
+    if (chunkLength > (bytesReaded + 127 > length ? length - bytesReaded : 127)) {
+      chunkLength = chunkLength > 128 ? 128 : chunkLength;
       connLostTries = 200;
       uint8_t data[chunkLength];
       Serial.readBytes(data, chunkLength);
-      bytesReaded += chunkLength;
-      bool httpSendOk = false;
-      while (!httpSendOk ) {
-        http.begin("http://192.168.1.45:14693/file.ashx");
-        http.addHeader("Content-Type", "image/jpg", false, true);
-        httpCode = http.sendRequest("POST", &data[0], chunkLength );
-        if (httpCode == HTTP_CODE_OK) {
-          //Serial.println("ok http");
-          httpSendOk = true;
-        } else {
-          //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+      Serial.write(&data[0], chunkLength);
+      inData = "";
+      cleanSerialBuffer();
+      while (inData == "" && connLostTries > 0) {
+        delay(10);
+        inData = readSerialData();
+        connLostTries--;
+      }
+      connLostTries = 200;
+      if (inData.startsWith("ok")) {
+        bytesReaded += chunkLength;
+        bool httpSendOk = false;
+        while (!httpSendOk ) {
+          http.begin("http://192.168.1.45:14693/file.ashx");
+          http.addHeader("Content-Type", "image/jpg", false, true);
+          http.addHeader("Content-Length", String( chunkLength), false, true);
+          httpCode = http.sendRequest("POST", &data[0], chunkLength );
+          if (httpCode == HTTP_CODE_OK) {
+            //Serial.println("ok http");
+            httpSendOk = true;
+          } else {
+            //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+          }
+          http.end();
         }
-        http.end();
       }
     } else
     {
@@ -151,6 +166,7 @@ void getImage2()
   }
   digitalWrite(LED_BUILTIN, HIGH);
   Serial.println("received");
+  delay(700);
   endFile();
 }
 void endFile()
@@ -199,8 +215,8 @@ void getImage()
   Serial.println("ok " + inData);
   //Serial.write(buffer, chunk);
   digitalWrite(LED_BUILTIN, LOW);
-  //http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
-  http.begin("http://img.monodev.tk/fileStreamEnterly.ashx");
+  http.begin("http://192.168.1.45:14693/fileStreamEnterly.ashx");
+  //http.begin("http://img.monodev.tk/fileStreamEnterly.ashx");
   http.addHeader("Content-Type", "image/jpg", false, true);
   httpCode = http.sendRequest("POST", &Serial, length );
   if (httpCode == HTTP_CODE_OK) {

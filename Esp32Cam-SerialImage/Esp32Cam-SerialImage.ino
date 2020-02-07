@@ -59,6 +59,7 @@ int pictureNumber = 0;
 bool camInitialized = false;
 bool flashOn = false;
 bool witnessOn = true;
+int currentBaudRate = 9600;
 hw_timer_t * timer = NULL;
 
 // Tilt the ESP32-CAM external LED Function
@@ -76,6 +77,7 @@ void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned lon
   }
   ledcWrite(2, 0);
 }
+
 void setup() {
   //Servo init
   servo1.attach(GPIO_SERVO, 550, 2400);
@@ -83,13 +85,17 @@ void setup() {
   //pinMode(GPIO_RESET, OUTPUT);//Probably hard reset
   ledcAttachPin(GPIO_RESET, 2);//test led
   ledcSetup(2, 5000, 8);
-  pinMode(GPIO_HC12, OUTPUT);//HC-12 AT Command control
+  //pinMode(GPIO_HC12, OUTPUT);//HC-12 AT Command control
+  ledcAttachPin(13, 4);//test led
+  ledcSetup(4, 5000, 8);
 
   //Serial Init
   //Serial.begin(115200);
-  Serial.begin(9600);
+  //Serial.begin(9600);
+  Serial.begin(2400);
   //Serial.setDebugOutput(true);
-  digitalWrite(GPIO_HC12, HIGH);
+  //digitalWrite(GPIO_HC12, HIGH);
+  ledcWrite(4, 255);
 
   //Dallas temp sensor
   DS18B20.begin();
@@ -102,6 +108,7 @@ void setup() {
   // tilt the LED
   tiltLed(30, 255, 10, 500);
 
+  //setBaudRate(9600, false);
   Serial.println("");
   Serial.println("Im awake again!");
 
@@ -116,6 +123,10 @@ void loop() {
   if (inData.startsWith("setCam"))
   {
     setCam();
+  }
+  if (inData.startsWith("setAnt"))
+  {
+    setAnt();
   }
   if (inData.startsWith("getTemp"))
   {
@@ -246,18 +257,41 @@ void getImage()
   }
   if (inData.startsWith("ok"))
   {
-    ledcWrite(2, 150);
+    ledcWrite(2, 255);
     //Serial.write(fb->buf, fb->len);
     int position = 0 ;
     int length  = fb->len;
     const uint8_t *data = fb->buf;
+    int buffChunkLength = 128;
     while (position < length /*&& inData.startsWith("ok")*/) {
-
-      int bufLength = ((position + 255) > length) ? length - position : 255;
+      cleanSerialBuffer();
+      ledcWrite(2, (255 - ((position * 255) / length)));
+      int bufLength = ((position + buffChunkLength) > length) ? length - position : buffChunkLength;
       Serial.write(&data[position], bufLength);
       //position = ((position + bufLength) >= length) ? position + bufLength :  position;
-      position += bufLength;
       Serial.flush();
+
+      while (Serial.available() < buffChunkLength) {
+        delay(10);
+      }
+      uint8_t dataRet[buffChunkLength];
+      Serial.readBytes(dataRet, buffChunkLength);
+      bool done = true;
+      for (int i = 0; i < buffChunkLength; i++)
+      {
+        if (dataRet[i] != (&data[position])[i]) {
+          done = false;
+        }
+      }
+      if (done) {
+        Serial.println("ok");
+        position += bufLength;
+      } else
+      {
+        Serial.println("wrong");
+      }
+
+
     }
     ledcWrite(2, 0);
     if (witnessOn) tiltLed(50, 255, 2, 1000);
@@ -371,6 +405,81 @@ void setCam() {
   //End configs
   Serial.println("Exit setCam");
 }
+void setAnt() {
+  Serial.println("Send config");
+  String inData = readSerialData();
+  while (inData == "") {
+    delay(100);
+    inData = readSerialData();
+  }
+  if (inData.startsWith("baudrate"))
+  {
+    Serial.println("Send value 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200");
+    int v = readSerialDataInt();
+    int tries = 200;
+    while (v == -1000 && tries > 0) {
+      delay(100);
+      v = readSerialDataInt();
+      tries--;
+    }
+    Serial.println("Setting baud rate at " + String(v));
+    setBaudRate(v, true);
+  }
+
+
+}
+void setBaudRate(int v, bool logit)
+{
+
+  delay(500);
+  //(GPIO_HC12, LOW);
+  ledcWrite(4, 0);
+  if (currentBaudRate != v) {
+    Serial.end();
+    delay(1000);
+    Serial.begin(9600);
+  }
+  while (!Serial) {
+    delay(10);
+  }
+  Serial.println("");
+  Serial.println("AT+B" + String(v));
+  int tries = 200;
+  String atData = readSerialData();
+  while (atData == "" && tries > 0) {
+    delay(100);
+    tries--;
+    atData = readSerialData();
+  }
+  //digitalWrite(GPIO_HC12, HIGH);
+  ledcWrite(4, 255);
+  if (atData.startsWith("OK+B"))
+  {
+    if (currentBaudRate != v) {
+      Serial.end();
+      delay(1000);
+      Serial.begin(v);
+      while (!Serial) {
+        delay(10);
+      }
+      currentBaudRate = v;
+    }
+    delay(1000);
+    if (logit)  Serial.println("Done setting baud rate");
+  }
+  else
+  {
+    Serial.end();
+    delay(1000);
+    Serial.begin(currentBaudRate);
+    while (!Serial) {
+      delay(10);
+    }
+    if (logit)Serial.println("Fail setting baud rate");
+  }
+
+}
+
 void getTemp()
 {
   float temp;
@@ -438,7 +547,7 @@ void antennaDown()
   }
   else
   {
-    Serial.println("Serial module can´t sleep");
+    Serial.println("Serial module can�t sleep");
     delay(1000);
     resetESP();
   }
@@ -477,7 +586,7 @@ void goToSleep() {
     }
     else
     {
-      Serial.println("Serial module can´t sleep");
+      Serial.println("Serial module can�t sleep");
     }
 
   }
@@ -524,6 +633,11 @@ void moveCam()
   else
   {
     Serial.println("Invalid value");
+  }
+}
+void cleanSerialBuffer() {
+  while (Serial.available() > 0) {
+    int inChar = Serial.read();
   }
 }
 
