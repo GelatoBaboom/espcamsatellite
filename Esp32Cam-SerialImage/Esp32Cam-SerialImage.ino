@@ -270,18 +270,24 @@ void getImage()
       Serial.write(&data[position], bufLength);
       //position = ((position + bufLength) >= length) ? position + bufLength :  position;
       Serial.flush();
-
-      while (Serial.available() < buffChunkLength) {
+      int recTries = 1000;
+      while (Serial.available() < bufLength && recTries > 0) {
         delay(10);
+        recTries--;
       }
-      uint8_t dataRet[buffChunkLength];
-      Serial.readBytes(dataRet, buffChunkLength);
       bool done = true;
-      for (int i = 0; i < buffChunkLength; i++)
-      {
-        if (dataRet[i] != (&data[position])[i]) {
-          done = false;
+      if (Serial.available() >= bufLength) {
+        uint8_t dataRet[bufLength];
+        Serial.readBytes(dataRet, bufLength);
+
+        for (int i = 0; i < bufLength; i++)
+        {
+          if (dataRet[i] != (&data[position])[i]) {
+            done = false;
+          }
         }
+      } else {
+        done = false;
       }
       if (done) {
         Serial.println("ok");
@@ -290,11 +296,26 @@ void getImage()
       {
         Serial.println("wrong");
       }
+      //check synchro
+      cleanSerialBuffer();
+      recTries = 1000;
+      inData == "";
+      inData = readSerialData();
+      while (inData == "" && recTries > 0) {
+        delay(10);
+        inData = readSerialData();
+        recTries--;
+      }
+      if (inData.startsWith("snd")) {
 
+      }
+      cleanSerialBuffer();
+      //end synchro
 
     }
     ledcWrite(2, 0);
     if (witnessOn) tiltLed(50, 255, 2, 1000);
+    inData == "";
     inData = readSerialData();
     while (inData == "") {
       delay(100);

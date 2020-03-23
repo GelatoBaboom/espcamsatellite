@@ -120,6 +120,7 @@ void getImage2()
   int connLostTries = 200;
   int bytesReaded = 0;
   //delay(3000);
+  int tries = 0;
   while (bytesReaded < length ) {
     int chunkLength =  Serial.available() ;
 
@@ -128,15 +129,19 @@ void getImage2()
       connLostTries = 200;
       uint8_t data[chunkLength];
       Serial.readBytes(data, chunkLength);
-      Serial.write(&data[0], chunkLength);
-      inData = "";
       cleanSerialBuffer();
-      while (inData == "" && connLostTries > 0) {
+      Serial.write(&data[0], chunkLength);
+      Serial.flush();
+
+      int recTries = 1000;
+      inData = "";
+      inData = readSerialData();
+      while (inData == "" && recTries > 0) {
         delay(10);
         inData = readSerialData();
-        connLostTries--;
+        recTries--;
       }
-      connLostTries = 200;
+      tries++;
       if (inData.startsWith("ok")) {
         bytesReaded += chunkLength;
         bool httpSendOk = false;
@@ -144,16 +149,20 @@ void getImage2()
           http.begin("http://192.168.1.45:14693/file.ashx");
           http.addHeader("Content-Type", "image/jpg", false, true);
           http.addHeader("Content-Length", String( chunkLength), false, true);
+          http.addHeader("Content-Tries", String( tries), false, true);
           httpCode = http.sendRequest("POST", &data[0], chunkLength );
           if (httpCode == HTTP_CODE_OK) {
             //Serial.println("ok http");
             httpSendOk = true;
+            tries = 0;
           } else {
             //Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
           }
           http.end();
         }
       }
+      cleanSerialBuffer();
+      Serial.println("snd");
     } else
     {
       if (connLostTries == 0) {
@@ -163,6 +172,7 @@ void getImage2()
         delay(100);
       }
     }
+
   }
   digitalWrite(LED_BUILTIN, HIGH);
   Serial.println("received");
