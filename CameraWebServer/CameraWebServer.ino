@@ -12,6 +12,8 @@
 //#define CAMERA_MODEL_M5STACK_PSRAM
 //#define CAMERA_MODEL_M5STACK_WIDE
 #define CAMERA_MODEL_AI_THINKER
+#define GPIO_EXT_LED 14
+#define GPIO_FLASH 4
 
 #include "camera_pins.h"
 
@@ -20,10 +22,28 @@ const char* password = "friofrio";
 
 void startCameraServer();
 
+// Tilt the ESP32-CAM external LED Function
+void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned long  delayCycle) {
+  bool rise = true;
+  uint8_t cycles = 0;
+
+  for (int dutyCycle = (minRiseVal + 1); rise == (dutyCycle <= (rise ? (maxRiseVal + 1) : (minRiseVal - 1))); (rise ? dutyCycle++ : dutyCycle--) ) {
+    ledcWrite(2, dutyCycle);
+    if ((dutyCycle == maxRiseVal || dutyCycle == minRiseVal) && cycles < ((maxCycles * 2) - 1)) {
+      rise = !rise ;
+      cycles++;
+    }
+    delayMicroseconds(delayCycle);
+  }
+  ledcWrite(2, 0);
+}
 void setup() {
-  Serial.begin(115200);
-  Serial.setDebugOutput(true);
-  Serial.println();
+  //Serial.begin(115200);
+  //Serial.setDebugOutput(true);
+  //Serial.println();
+   pinMode(GPIO_FLASH, OUTPUT);//Flash Led
+  ledcAttachPin(GPIO_EXT_LED, 2);//test led
+  ledcSetup(2, 5000, 8);
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -47,7 +67,7 @@ void setup() {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
   //init with high specs to pre-allocate larger buffers
-  if(psramFound()){
+  if (psramFound()) {
     config.frame_size = FRAMESIZE_UXGA;
     config.jpeg_quality = 10;
     config.fb_count = 2;
@@ -94,7 +114,8 @@ void setup() {
   Serial.println("WiFi connected");
 
   startCameraServer();
-
+  // tilt the LED
+  tiltLed(30, 255, 10, 500);
   Serial.print("Camera Ready! Use 'http://");
   Serial.print(WiFi.localIP());
   Serial.println("' to connect");

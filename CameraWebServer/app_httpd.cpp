@@ -33,6 +33,7 @@
 #define FACE_COLOR_YELLOW (FACE_COLOR_RED | FACE_COLOR_GREEN)
 #define FACE_COLOR_CYAN   (FACE_COLOR_BLUE | FACE_COLOR_GREEN)
 #define FACE_COLOR_PURPLE (FACE_COLOR_BLUE | FACE_COLOR_RED)
+#define GPIO_FLASH 4
 
 typedef struct {
   size_t size; //number of values used for filtering
@@ -216,6 +217,7 @@ static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size
 }
 
 static esp_err_t capture_handler(httpd_req_t *req) {
+  digitalWrite(GPIO_FLASH, HIGH);
   camera_fb_t * fb = NULL;
   esp_err_t res = ESP_OK;
   int64_t fr_start = esp_timer_get_time();
@@ -299,6 +301,7 @@ static esp_err_t capture_handler(httpd_req_t *req) {
 
   int64_t fr_end = esp_timer_get_time();
   Serial.printf("FACE: %uB %ums %s%d\n", (uint32_t)(jchunk.len), (uint32_t)((fr_end - fr_start) / 1000), detected ? "DETECTED " : "", face_id);
+  digitalWrite(GPIO_FLASH, LOW);
   return res;
 }
 
@@ -329,7 +332,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
 
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   Serial.println("before loop");
-  int frames =0;
+  int frames = 0;
   while (true) {
     Serial.println("init loop");
     detected = false;
@@ -347,9 +350,9 @@ static esp_err_t stream_handler(httpd_req_t *req) {
       fr_recognize = fr_start;
       if (!detection_enabled || fb->width > 400) {
         Serial.println("Detection disable");
-    
-        if (fb->format == PIXFORMAT_JPEG ) {
-      frames=0;
+        //aca decide si usa el metodo directo o analiza cada frame
+        if (fb->format != PIXFORMAT_JPEG ) {
+          frames = 0;
 
 
           //bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
@@ -371,7 +374,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
             res = ESP_FAIL;
           }
         } else {
-      frames++;
+          frames++;
           _jpg_buf_len = fb->len;
           _jpg_buf = fb->buf;
         }
