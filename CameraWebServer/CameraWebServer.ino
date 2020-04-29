@@ -1,21 +1,15 @@
 #include "esp_camera.h"
+#include "camera_pins.h"
 #include <WiFi.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
-//
-// WARNING!!! Make sure that you have either selected ESP32 Wrover Module,
-//            or another board which has PSRAM enabled
-//
-
-// Select camera model
-//#define CAMERA_MODEL_WROVER_KIT
-//#define CAMERA_MODEL_ESP_EYE
-//#define CAMERA_MODEL_M5STACK_PSRAM
-//#define CAMERA_MODEL_M5STACK_WIDE
-#define CAMERA_MODEL_AI_THINKER
 #define GPIO_EXT_LED 14
 #define GPIO_FLASH 4
+#define ONE_WIRE_BUS 15
 
-#include "camera_pins.h"
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature DS18B20(&oneWire);
 
 const char* ssid = "GelatoBaboom";
 const char* password = "friofrio";
@@ -39,9 +33,10 @@ void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned lon
 }
 void setup() {
   //Serial.begin(115200);
+  Serial.begin(9600);
   //Serial.setDebugOutput(true);
   //Serial.println();
-   pinMode(GPIO_FLASH, OUTPUT);//Flash Led
+  pinMode(GPIO_FLASH, OUTPUT);//Flash Led
   ledcAttachPin(GPIO_EXT_LED, 2);//test led
   ledcSetup(2, 5000, 8);
 
@@ -77,10 +72,8 @@ void setup() {
     config.fb_count = 1;
   }
 
-#if defined(CAMERA_MODEL_ESP_EYE)
-  pinMode(13, INPUT_PULLUP);
-  pinMode(14, INPUT_PULLUP);
-#endif
+  //Dallas temp sensor
+  DS18B20.begin();
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
