@@ -22,6 +22,9 @@
 #include "fd_forward.h"
 #include "fr_forward.h"
 
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
 #define ENROLL_CONFIRM_TIMES 5
 #define FACE_ID_SAVE_NUMBER 7
 
@@ -34,6 +37,10 @@
 #define FACE_COLOR_CYAN   (FACE_COLOR_BLUE | FACE_COLOR_GREEN)
 #define FACE_COLOR_PURPLE (FACE_COLOR_BLUE | FACE_COLOR_RED)
 #define GPIO_FLASH 4
+#define ONE_WIRE_BUS 15
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature DS18B20(&oneWire);
 
 typedef struct {
   size_t size; //number of values used for filtering
@@ -62,7 +69,23 @@ static int8_t detection_enabled = 0;
 static int8_t recognition_enabled = 0;
 static int8_t is_enrolling = 0;
 static face_id_list id_list = {0};
-
+void initDS18B20()
+{
+  //Dallas temp sensor
+  DS18B20.begin();
+}
+float getTemp()
+{
+  float temp;
+  //Serial.println("Check temp..");
+  //do {
+  DS18B20.requestTemperaturesByIndex(0);
+  temp = DS18B20.getTempCByIndex(0);
+  delay(100);
+  // } while (temp == 85.0 || temp == (-127.0));
+  Serial.println("temp: " + String(temp));
+  return temp;
+}
 static ra_filter_t * ra_filter_init(ra_filter_t * filter, size_t sample_size) {
   memset(filter, 0, sizeof(ra_filter_t));
 
@@ -304,7 +327,7 @@ static esp_err_t capture_handler(httpd_req_t *req) {
 
   int64_t fr_end = esp_timer_get_time();
   //Serial.printf("FACE: %uB %ums %s%d\n", (uint32_t)(jchunk.len), (uint32_t)((fr_end - fr_start) / 1000), detected ? "DETECTED " : "", face_id);
-  
+
   return res;
 }
 
@@ -606,13 +629,28 @@ static esp_err_t status_handler(httpd_req_t *req) {
   return httpd_resp_send(req, json_response, strlen(json_response));
 }
 
+static esp_err_t temp_handler(httpd_req_t *req) {
+  static char json_response[1024];
+  float temp = getTemp();
+  Serial.println("temp resp: " + String(temp));
+  char * p = json_response;
+  *p++ = '{';
+
+  p += sprintf(p, "\"temp\":\"%.1f\"", temp);
+  *p++ = '}';
+  *p++ = 0;
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json_response, strlen(json_response));
+}
+
 static esp_err_t index_handler(httpd_req_t *req) {
   httpd_resp_set_type(req, "text/html");
   httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
   sensor_t * s = esp_camera_sensor_get();
-//  if (s->id.PID == OV3660_PID) {
-//    return httpd_resp_send(req, (const char *)index_ov3660_html_gz, index_ov3660_html_gz_len);
-//  }
+  //  if (s->id.PID == OV3660_PID) {
+  //    return httpd_resp_send(req, (const char *)index_ov3660_html_gz, index_ov3660_html_gz_len);
+  //  }
   return httpd_resp_send(req, (const char *)index_ov2640_html_gz, index_ov2640_html_gz_len);
 }
 
@@ -630,6 +668,13 @@ void startCameraServer() {
     .uri       = "/status",
     .method    = HTTP_GET,
     .handler   = status_handler,
+    .user_ctx  = NULL
+  };
+
+  httpd_uri_t getTemp_uri = {
+    .uri       = "/getTemp",
+    .method    = HTTP_GET,
+    .handler   = temp_handler,
     .user_ctx  = NULL
   };
 
@@ -678,6 +723,7 @@ void startCameraServer() {
     httpd_register_uri_handler(camera_httpd, &index_uri);
     httpd_register_uri_handler(camera_httpd, &cmd_uri);
     httpd_register_uri_handler(camera_httpd, &status_uri);
+    httpd_register_uri_handler(camera_httpd, &getTemp_uri);
     httpd_register_uri_handler(camera_httpd, &capture_uri);
   }
 

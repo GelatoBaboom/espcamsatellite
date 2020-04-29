@@ -1,20 +1,17 @@
 #include "esp_camera.h"
 #include "camera_pins.h"
 #include <WiFi.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+
 
 #define GPIO_EXT_LED 14
 #define GPIO_FLASH 4
-#define ONE_WIRE_BUS 15
-
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature DS18B20(&oneWire);
 
 const char* ssid = "GelatoBaboom";
 const char* password = "friofrio";
 
 void startCameraServer();
+void initDS18B20();
+void getTemp();
 
 // Tilt the ESP32-CAM external LED Function
 void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned long  delayCycle) {
@@ -72,8 +69,7 @@ void setup() {
     config.fb_count = 1;
   }
 
-  //Dallas temp sensor
-  DS18B20.begin();
+  initDS18B20();
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -116,5 +112,6 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  //getTemp();
   delay(10000);
 }
