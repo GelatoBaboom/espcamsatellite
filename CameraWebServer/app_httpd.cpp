@@ -67,6 +67,7 @@ httpd_handle_t camera_httpd = NULL;
 static mtmn_config_t mtmn_config = {0};
 static int8_t detection_enabled = 0;
 static int8_t recognition_enabled = 0;
+static int8_t flash_enabled = 1;
 static int8_t is_enrolling = 0;
 static face_id_list id_list = {0};
 void initDS18B20()
@@ -240,7 +241,7 @@ static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size
 }
 
 static esp_err_t capture_handler(httpd_req_t *req) {
-  digitalWrite(GPIO_FLASH, HIGH);
+  digitalWrite(GPIO_FLASH, flash_enabled ? HIGH : LOW);
   delay(200);
   camera_fb_t * fb = NULL;
   esp_err_t res = ESP_OK;
@@ -562,6 +563,9 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
   else if (!strcmp(variable, "special_effect")) res = s->set_special_effect(s, val);
   else if (!strcmp(variable, "wb_mode")) res = s->set_wb_mode(s, val);
   else if (!strcmp(variable, "ae_level")) res = s->set_ae_level(s, val);
+  else if (!strcmp(variable, "flash")) {
+    flash_enabled = val;
+  }
   else if (!strcmp(variable, "face_detect")) {
     detection_enabled = val;
     if (!detection_enabled) {
@@ -621,7 +625,8 @@ static esp_err_t status_handler(httpd_req_t *req) {
   p += sprintf(p, "\"colorbar\":%u,", s->status.colorbar);
   p += sprintf(p, "\"face_detect\":%u,", detection_enabled);
   p += sprintf(p, "\"face_enroll\":%u,", is_enrolling);
-  p += sprintf(p, "\"face_recognize\":%u", recognition_enabled);
+  p += sprintf(p, "\"face_recognize\":%u,", recognition_enabled);
+  p += sprintf(p, "\"flash\":%u", flash_enabled);
   *p++ = '}';
   *p++ = 0;
   httpd_resp_set_type(req, "application/json");
@@ -632,10 +637,8 @@ static esp_err_t status_handler(httpd_req_t *req) {
 static esp_err_t temp_handler(httpd_req_t *req) {
   static char json_response[1024];
   float temp = getTemp();
-  Serial.println("temp resp: " + String(temp));
   char * p = json_response;
   *p++ = '{';
-
   p += sprintf(p, "\"temp\":\"%.1f\"", temp);
   *p++ = '}';
   *p++ = 0;
