@@ -542,6 +542,13 @@
                             <label class="slider" for="face_recognize"></label>
                         </div>
                     </div>
+                    <div class="input-group" id="flash-group">
+                        <label for="face_recognize">Flash</label>
+                        <div class="switch">
+                            <input id="flash" type="checkbox" class="default-action">
+                            <label class="slider" for="flash"></label>
+                        </div>
+                    </div>
                     <section id="buttons">
                         <button id="get-still">Get Still</button>
                         <button id="toggle-stream">Start Stream</button>
@@ -758,7 +765,7 @@
                 updateConfig(awb)
                 awb.checked ? show(wb) : hide(wb)
             }
-
+           
             // Detection and framesize
             const detect = document.getElementById('face_detect')
             const recognize = document.getElementById('face_recognize')
