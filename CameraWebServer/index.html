@@ -25,7 +25,7 @@
         }
 
         #menu {
-            display: none;
+            display: flex;
             flex-wrap: nowrap;
             min-width: 340px;
             background: #363636;
@@ -33,6 +33,7 @@
             border-radius: 4px;
             margin-top: -10px;
             margin-right: 10px;
+            margin-left: 10px;
         }
 
         #content {
@@ -72,7 +73,7 @@
             figure img {
                 display: block;
                 max-width: 100%;
-                max-height: calc(100vh - 40px);
+                max-height: calc(100vh - 85px);
                 width: auto;
                 height: auto;
             }
@@ -107,10 +108,13 @@
             opacity: 0;
             width: 0;
             height: 0;
+            margin-left: 0px;
         }
 
             #nav-toggle-cb:checked + #menu {
                 display: flex;
+                margin-left: -350px;
+                transition: .4s;
             }
 
         .input-group {
@@ -349,10 +353,10 @@
         <div id="logo">
             <label for="nav-toggle-cb" id="nav-toggle">&#9776;&nbsp;&nbsp;Toggle OV2640 settings</label>
         </div>
-        <div id="content">
+        <div id="content" style="margin-left:-15px;">
             <div id="sidebar">
                 <input type="checkbox" id="nav-toggle-cb" checked="checked">
-                <nav id="menu">
+                <nav id="menu" class="menu">
                     <div class="input-group" id="framesize-group">
                         <label for="framesize">Resolution</label>
                         <select id="framesize" class="default-action">
@@ -549,33 +553,37 @@
                             <label class="slider" for="flash"></label>
                         </div>
                     </div>
+
+                </nav>
+            </div>
+            <figure>
+                <div  class="image-container">
+                    <div id="stream-container" class="hidden">
+                        <div class="close" id="close-stream">×</div>
+                        <div id="tempLbl" class="imgMessage">00.0º</div>
+                        <img id="stream" src="">
+                    </div>
                     <section id="buttons">
                         <button id="get-still">Get Still</button>
                         <button id="toggle-stream">Start Stream</button>
                         <button id="face_enroll" class="disabled" disabled="disabled">Enroll Face</button>
                     </section>
-                </nav>
-            </div>
-            <figure>
-                <div id="stream-container" class="image-container hidden">
-                    <div class="close" id="close-stream">×</div>
-                    <div id="tempLbl" class="imgMessage">00.0º</div>
-                    <img id="stream" src="">
                 </div>
+               
             </figure>
         </div>
     </section>
     <script>
         function printTemp(baseHost) {
             fetch(`${baseHost}/getTemp`)
-             .then(function (response) {
-                 return response.json()
-             })
-             .then(function (state) {
-                 document
-                   .getElementById('tempLbl')
-                   .innerHTML = state['temp'] + 'º';
-             });
+                .then(function (response) {
+                    return response.json()
+                })
+                .then(function (state) {
+                    document
+                        .getElementById('tempLbl')
+                        .innerHTML = state['temp'] + 'º';
+                });
 
         }
         document.addEventListener('DOMContentLoaded', function (event) {
@@ -658,31 +666,31 @@
                 const query = `${baseHost}/control?var=${el.id}&val=${value}`
 
                 fetch(query)
-                  .then(response => {
-                      console.log(`request to ${query} finished, status: ${response.status}`)
-                  })
+                    .then(response => {
+                        console.log(`request to ${query} finished, status: ${response.status}`)
+                    })
             }
 
             document
-              .querySelectorAll('.close')
-              .forEach(el => {
-                  el.onclick = () => {
-                      hide(el.parentNode)
-                  }
-              })
+                .querySelectorAll('.close')
+                .forEach(el => {
+                    el.onclick = () => {
+                        hide(el.parentNode)
+                    }
+                })
 
             // read initial values
             fetch(`${baseHost}/status`)
-              .then(function (response) {
-                  return response.json()
-              })
-              .then(function (state) {
-                  document
-                    .querySelectorAll('.default-action')
-                    .forEach(el => {
-                        updateValue(el, state[el.id], false)
-                    })
-              })
+                .then(function (response) {
+                    return response.json()
+                })
+                .then(function (state) {
+                    document
+                        .querySelectorAll('.default-action')
+                        .forEach(el => {
+                            updateValue(el, state[el.id], false)
+                        })
+                })
 
             const view = document.getElementById('stream')
             const viewContainer = document.getElementById('stream-container')
@@ -729,10 +737,10 @@
 
             // Attach default on change action
             document
-              .querySelectorAll('.default-action')
-              .forEach(el => {
-                  el.onchange = () => updateConfig(el)
-              })
+                .querySelectorAll('.default-action')
+                .forEach(el => {
+                    el.onchange = () => updateConfig(el)
+                })
 
             // Custom actions
             // Gain
@@ -765,7 +773,7 @@
                 updateConfig(awb)
                 awb.checked ? show(wb) : hide(wb)
             }
-           
+
             // Detection and framesize
             const detect = document.getElementById('face_detect')
             const recognize = document.getElementById('face_recognize')
