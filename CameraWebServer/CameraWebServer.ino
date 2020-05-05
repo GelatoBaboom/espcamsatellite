@@ -1,5 +1,7 @@
 #include "esp_camera.h"
 #include "camera_pins.h"
+#include "soc/soc.h"           // Disable brownour problems
+#include "soc/rtc_cntl_reg.h"  // Disable brownour problems
 #include <WiFi.h>
 
 
@@ -30,6 +32,7 @@ void tiltLed(int minRiseVal, uint8_t maxRiseVal, uint8_t maxCycles, unsigned lon
 }
 void setup() {
   //Serial.begin(115200);
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
   Serial.begin(9600);
   //Serial.setDebugOutput(true);
   //Serial.println();
@@ -69,15 +72,16 @@ void setup() {
     config.fb_count = 1;
   }
 
-  initDS18B20();
 
+  tiltLed(30, 255, 2, 1000);
   // camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
+    tiltLed(30, 255, 20, 50);
     Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }
-
+  tiltLed(30, 255, 3, 1000);
   sensor_t * s = esp_camera_sensor_get();
   //initial sensors are flipped vertically and colors are a bit saturated
   if (s->id.PID == OV3660_PID) {
@@ -92,16 +96,18 @@ void setup() {
   s->set_vflip(s, 1);
   s->set_hmirror(s, 1);
 #endif
-
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    tiltLed(30, 255, 1, 500);
   }
   Serial.println("");
   Serial.println("WiFi connected");
-
+  initDS18B20();
   startCameraServer();
   // tilt the LED
   tiltLed(30, 255, 10, 500);

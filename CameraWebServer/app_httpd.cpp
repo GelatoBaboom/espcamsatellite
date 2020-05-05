@@ -347,10 +347,10 @@ static esp_err_t stream_handler(httpd_req_t *req) {
   int64_t fr_recognize = 0;
   int64_t fr_encode = 0;
 
-  static int64_t last_frame = 0;
+/*   static int64_t last_frame = 0;
   if (!last_frame) {
     last_frame = esp_timer_get_time();
-  }
+  } */
 
   res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
   if (res != ESP_OK) {
@@ -361,10 +361,11 @@ static esp_err_t stream_handler(httpd_req_t *req) {
   //Serial.println("before loop");
   int frames = 0;
   while (true) {
-    //Serial.println("init loop");
+    Serial.println("init loop");
     detected = false;
     face_id = 0;
     fb = esp_camera_fb_get();
+  Serial.println("fb get");
     if (!fb) {
       //Serial.println("Camera capture failed");
       res = ESP_FAIL;
@@ -454,7 +455,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         }
       }
     }
-    //Serial.println("Before checks");
+    Serial.println("Before checks");
     if (res == ESP_OK) {
       size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
       res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
@@ -474,9 +475,10 @@ static esp_err_t stream_handler(httpd_req_t *req) {
       _jpg_buf = NULL;
     }
     if (res != ESP_OK) {
+    Serial.println("ESP_ERROR");
       break;
     }
-    int64_t fr_end = esp_timer_get_time();
+/*     int64_t fr_end = esp_timer_get_time();
 
     int64_t ready_time = (fr_ready - fr_start) / 1000;
     int64_t face_time = (fr_face - fr_ready) / 1000;
@@ -487,7 +489,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     int64_t frame_time = fr_end - last_frame;
     last_frame = fr_end;
     frame_time /= 1000;
-    uint32_t avg_frame_time = ra_filter_run(&ra_filter, frame_time);
+    uint32_t avg_frame_time = ra_filter_run(&ra_filter, frame_time); */
     //Serial.printf("MJPG: %uB %ums (%.1ffps), AVG: %ums (%.1ffps), %u+%u+%u+%u=%u %s%d\n",
     //              (uint32_t)(_jpg_buf_len),
     //              (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time,
@@ -497,7 +499,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     //             );
   }
 
-  last_frame = 0;
+  //last_frame = 0;
   return res;
 }
 
