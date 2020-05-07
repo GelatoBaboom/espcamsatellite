@@ -22,6 +22,7 @@
 #include "fd_forward.h"
 #include "fr_forward.h"
 
+#include <WiFi.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
@@ -70,10 +71,27 @@ static int8_t recognition_enabled = 0;
 static int8_t flash_enabled = 1;
 static int8_t is_enrolling = 0;
 static face_id_list id_list = {0};
-void initDS18B20()
+
+
+const char* ssid = "GelatoBaboom";
+const char* password = "friofrio";
+
+void initComponents()
 {
   //Dallas temp sensor
   DS18B20.begin();
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+}
+String getWifiIP()
+{
+  return WiFi.localIP().toString();
 }
 float getTemp()
 {
@@ -647,6 +665,18 @@ static esp_err_t temp_handler(httpd_req_t *req) {
   return httpd_resp_send(req, json_response, strlen(json_response));
 }
 
+static esp_err_t wsignal_handler(httpd_req_t *req) {
+  static char json_response[1024];
+  long rssi = WiFi.RSSI();
+  char * p = json_response;
+  *p++ = '{';
+  p += sprintf(p, "\"signal\":\"%ld\"", rssi);
+  *p++ = '}';
+  *p++ = 0;
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json_response, strlen(json_response));
+}
 static esp_err_t index_handler(httpd_req_t *req) {
   httpd_resp_set_type(req, "text/html");
   httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
@@ -678,6 +708,13 @@ void startCameraServer() {
     .uri       = "/getTemp",
     .method    = HTTP_GET,
     .handler   = temp_handler,
+    .user_ctx  = NULL
+  };
+
+  httpd_uri_t wsignal_uri = {
+    .uri       = "/wsignal",
+    .method    = HTTP_GET,
+    .handler   = wsignal_handler,
     .user_ctx  = NULL
   };
 
@@ -727,6 +764,7 @@ void startCameraServer() {
     httpd_register_uri_handler(camera_httpd, &cmd_uri);
     httpd_register_uri_handler(camera_httpd, &status_uri);
     httpd_register_uri_handler(camera_httpd, &getTemp_uri);
+    httpd_register_uri_handler(camera_httpd, &wsignal_uri);
     httpd_register_uri_handler(camera_httpd, &capture_uri);
   }
 

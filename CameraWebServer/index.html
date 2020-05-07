@@ -329,6 +329,14 @@
             text-align: center;
         }
 
+        .wsignalMessage {
+            position: absolute;
+            bottom: 40px;
+            left: 5px;
+            color: #fff;
+            text-align: center;
+        }
+
         .close {
             position: absolute;
             right: 5px;
@@ -351,7 +359,7 @@
 <body>
     <section class="main">
         <div id="logo">
-            <label for="nav-toggle-cb" id="nav-toggle">&#9776;&nbsp;&nbsp;Toggle OV2640 settings</label>
+            <label for="nav-toggle-cb" id="nav-toggle">&#9776;&nbsp;&nbsp;Settings</label>
         </div>
         <div id="content" style="margin-left:-15px;">
             <div id="sidebar">
@@ -547,20 +555,28 @@
                         </div>
                     </div>
                     <div class="input-group" id="flash-group">
-                        <label for="face_recognize">Flash</label>
+                        <label for="flash">Flash</label>
                         <div class="switch">
                             <input id="flash" type="checkbox" class="default-action">
                             <label class="slider" for="flash"></label>
+                        </div>
+                    </div>
+                    <div class="input-group" id="wsignal-group">
+                        <label for="wsignal">Wifi Signal</label>
+                        <div class="switch">
+                            <input id="wsignal" type="checkbox" class="default-action">
+                            <label class="slider" for="wsignal"></label>
                         </div>
                     </div>
 
                 </nav>
             </div>
             <figure>
-                <div  class="image-container">
+                <div class="image-container">
                     <div id="stream-container" class="hidden">
                         <div class="close" id="close-stream">×</div>
                         <div id="tempLbl" class="imgMessage">00.0º</div>
+                        <div id="wsignalLbl" class="wsignalMessage">45dBi</div>
                         <img id="stream" src="">
                     </div>
                     <section id="buttons">
@@ -569,7 +585,7 @@
                         <button id="face_enroll" class="disabled" disabled="disabled">Enroll Face</button>
                     </section>
                 </div>
-               
+
             </figure>
         </div>
     </section>
@@ -778,6 +794,28 @@
             const detect = document.getElementById('face_detect')
             const recognize = document.getElementById('face_recognize')
             const framesize = document.getElementById('framesize')
+            const wsignal = document.getElementById('wsignal')
+            var wsignalInterval;
+            wsignal.onchange = () => {
+                updateConfig(wsignal)
+                if (!wsignal.checked) {
+                    wsignalInterval = setInterval(function () {
+                        fetch(`${baseHost}/wsignal`)
+                          .then(function (response) {
+                              return response.json()
+                          })
+                          .then(function (state) {
+                              document
+                                  .getElementById('wsignalLbl')
+                                  .innerHTML = state['signal'] + 'dBi';
+                          });
+
+                    }, 2000)
+                } else {
+                    clearInterval(wsignalInterval);
+                    document.getElementById('wsignalLbl').innerHTML = '';
+                }
+            }
 
             framesize.onchange = () => {
                 updateConfig(framesize)

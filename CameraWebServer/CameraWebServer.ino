@@ -1,16 +1,15 @@
 #include "esp_camera.h"
 #include "camera_pins.h"
-#include <WiFi.h>
+
 
 
 #define GPIO_EXT_LED 14
 #define GPIO_FLASH 4
 
-const char* ssid = "GelatoBaboom";
-const char* password = "friofrio";
 
 void startCameraServer();
-void initDS18B20();
+void initComponents();
+String getWifiIP();
 void getTemp();
 
 // Tilt the ESP32-CAM external LED Function
@@ -69,7 +68,7 @@ void setup() {
     config.fb_count = 1;
   }
 
-  initDS18B20();
+  
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -79,34 +78,21 @@ void setup() {
   }
 
   sensor_t * s = esp_camera_sensor_get();
-  //initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV3660_PID) {
-    s->set_vflip(s, 1);//flip it back
-    s->set_brightness(s, 1);//up the blightness just a bit
-    s->set_saturation(s, -2);//lower the saturation
-  }
   //drop down frame size for higher initial frame rate
   s->set_framesize(s, FRAMESIZE_QVGA);
+  //
+  //#if defined(CAMERA_MODEL_M5STACK_WIDE)
+  //  s->set_vflip(s, 1);
+  //  s->set_hmirror(s, 1);
+  //#endif
 
-#if defined(CAMERA_MODEL_M5STACK_WIDE)
-  s->set_vflip(s, 1);
-  s->set_hmirror(s, 1);
-#endif
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
+  initComponents();
 
   startCameraServer();
   // tilt the LED
   tiltLed(30, 255, 10, 500);
   Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
+  Serial.print(getWifiIP());
   Serial.println("' to connect");
 }
 
