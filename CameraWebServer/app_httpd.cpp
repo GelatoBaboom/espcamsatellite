@@ -22,6 +22,7 @@
 #include "fd_forward.h"
 #include "fr_forward.h"
 
+#include <WiFi.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
@@ -70,10 +71,27 @@ static int8_t recognition_enabled = 0;
 static int8_t flash_enabled = 1;
 static int8_t is_enrolling = 0;
 static face_id_list id_list = {0};
-void initDS18B20()
+
+
+const char* ssid = "GelatoBaboom";
+const char* password = "friofrio";
+
+void initComponents()
 {
   //Dallas temp sensor
   DS18B20.begin();
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+}
+String getWifiIP()
+{
+  return WiFi.localIP().toString();
 }
 float getTemp()
 {
@@ -347,10 +365,10 @@ static esp_err_t stream_handler(httpd_req_t *req) {
   int64_t fr_recognize = 0;
   int64_t fr_encode = 0;
 
-/*   static int64_t last_frame = 0;
+  static int64_t last_frame = 0;
   if (!last_frame) {
     last_frame = esp_timer_get_time();
-  } */
+  }
 
   res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
   if (res != ESP_OK) {
@@ -361,11 +379,10 @@ static esp_err_t stream_handler(httpd_req_t *req) {
   //Serial.println("before loop");
   int frames = 0;
   while (true) {
-    Serial.println("init loop");
+    //Serial.println("init loop");
     detected = false;
     face_id = 0;
     fb = esp_camera_fb_get();
-  Serial.println("fb get");
     if (!fb) {
       //Serial.println("Camera capture failed");
       res = ESP_FAIL;
@@ -455,7 +472,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         }
       }
     }
-    Serial.println("Before checks");
+    //Serial.println("Before checks");
     if (res == ESP_OK) {
       size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
       res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
@@ -475,10 +492,9 @@ static esp_err_t stream_handler(httpd_req_t *req) {
       _jpg_buf = NULL;
     }
     if (res != ESP_OK) {
-    Serial.println("ESP_ERROR");
       break;
     }
-/*     int64_t fr_end = esp_timer_get_time();
+    int64_t fr_end = esp_timer_get_time();
 
     int64_t ready_time = (fr_ready - fr_start) / 1000;
     int64_t face_time = (fr_face - fr_ready) / 1000;
@@ -489,7 +505,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     int64_t frame_time = fr_end - last_frame;
     last_frame = fr_end;
     frame_time /= 1000;
-    uint32_t avg_frame_time = ra_filter_run(&ra_filter, frame_time); */
+    uint32_t avg_frame_time = ra_filter_run(&ra_filter, frame_time);
     //Serial.printf("MJPG: %uB %ums (%.1ffps), AVG: %ums (%.1ffps), %u+%u+%u+%u=%u %s%d\n",
     //              (uint32_t)(_jpg_buf_len),
     //              (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time,
@@ -499,7 +515,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     //             );
   }
 
-  //last_frame = 0;
+  last_frame = 0;
   return res;
 }
 
@@ -629,6 +645,7 @@ static esp_err_t status_handler(httpd_req_t *req) {
   p += sprintf(p, "\"face_enroll\":%u,", is_enrolling);
   p += sprintf(p, "\"face_recognize\":%u,", recognition_enabled);
   p += sprintf(p, "\"flash\":%u", flash_enabled);
+  p += sprintf(p, "\"wsignal\":0");
   *p++ = '}';
   *p++ = 0;
   httpd_resp_set_type(req, "application/json");
@@ -649,6 +666,18 @@ static esp_err_t temp_handler(httpd_req_t *req) {
   return httpd_resp_send(req, json_response, strlen(json_response));
 }
 
+static esp_err_t wsignal_handler(httpd_req_t *req) {
+  static char json_response[1024];
+  long rssi = WiFi.RSSI();
+  char * p = json_response;
+  *p++ = '{';
+  p += sprintf(p, "\"signal\":\"%ld\"", rssi);
+  *p++ = '}';
+  *p++ = 0;
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json_response, strlen(json_response));
+}
 static esp_err_t index_handler(httpd_req_t *req) {
   httpd_resp_set_type(req, "text/html");
   httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
@@ -680,6 +709,13 @@ void startCameraServer() {
     .uri       = "/getTemp",
     .method    = HTTP_GET,
     .handler   = temp_handler,
+    .user_ctx  = NULL
+  };
+
+  httpd_uri_t wsignal_uri = {
+    .uri       = "/wsignal",
+    .method    = HTTP_GET,
+    .handler   = wsignal_handler,
     .user_ctx  = NULL
   };
 
@@ -729,6 +765,7 @@ void startCameraServer() {
     httpd_register_uri_handler(camera_httpd, &cmd_uri);
     httpd_register_uri_handler(camera_httpd, &status_uri);
     httpd_register_uri_handler(camera_httpd, &getTemp_uri);
+    httpd_register_uri_handler(camera_httpd, &wsignal_uri);
     httpd_register_uri_handler(camera_httpd, &capture_uri);
   }
 
