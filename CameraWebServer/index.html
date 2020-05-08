@@ -797,8 +797,8 @@
             const wsignal = document.getElementById('wsignal')
             var wsignalInterval;
             wsignal.onchange = () => {
-                updateConfig(wsignal)
-                if (!wsignal.checked) {
+                //updateConfig(wsignal)
+                if (wsignal.checked) {
                     wsignalInterval = setInterval(function () {
                         fetch(`${baseHost}/wsignal`)
                           .then(function (response) {
