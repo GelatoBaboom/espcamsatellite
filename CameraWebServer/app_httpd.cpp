@@ -644,7 +644,7 @@ static esp_err_t status_handler(httpd_req_t *req) {
   p += sprintf(p, "\"face_detect\":%u,", detection_enabled);
   p += sprintf(p, "\"face_enroll\":%u,", is_enrolling);
   p += sprintf(p, "\"face_recognize\":%u,", recognition_enabled);
-  p += sprintf(p, "\"flash\":%u", flash_enabled);
+  p += sprintf(p, "\"flash\":%u,", flash_enabled);
   p += sprintf(p, "\"wsignal\":0");
   *p++ = '}';
   *p++ = 0;
