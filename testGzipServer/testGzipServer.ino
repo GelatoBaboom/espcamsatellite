@@ -56,24 +56,34 @@ void temp_handler(AsyncWebServerRequest *request) {
   request->send(response);
 }
 void temph_handler(AsyncWebServerRequest *request) {
-  static char json_response[1024];
+  String json_response;
   DBG_OUTPUT_PORT.println("entra");
-  char * p = json_response;
+
   fi = SD.open("values.txt");
   if (fi) {
-    DBG_OUTPUT_PORT.println("esta, el archivo esta");
-    *p++ = '{\"values\":[';
+    json_response = "{\"values\":[";
     while (fi.available()) {
-      String v = fi.readStringUntil('\n');
-      char buf[v.length() + 1];
-      strcpy(buf, v.c_str());
-      p += sprintf(p, "%.1f,", atof(buf) );
+      String v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      json_response += v ;
+      if (fi.available())json_response += ",";
     }
     fi.close();
-    *p++ = ']}';
-    *p++ = 0;
-    DBG_OUTPUT_PORT.println(p);
+    json_response += "]";
   }
+  fi = SD.open("labels.txt");
+  if (fi) {
+    json_response += ",\"labels\":[";
+    while (fi.available()) {
+      String v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      json_response += "\""+ v+ "\"" ;
+      if (fi.available())json_response += ",";
+    }
+    fi.close();
+    json_response += "]}";
+  }
+ 
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
