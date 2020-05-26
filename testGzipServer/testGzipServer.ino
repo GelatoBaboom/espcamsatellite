@@ -1,6 +1,8 @@
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 //#include <ESP8266WebServer.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
@@ -26,6 +28,9 @@ File fi;
 
 OneWire oneWire(ONE_WIRE_BUS_PIN);
 DallasTemperature DS18B20(&oneWire);
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 
 AsyncWebServer  server = AsyncWebServer(80);
@@ -77,13 +82,13 @@ void temph_handler(AsyncWebServerRequest *request) {
     while (fi.available()) {
       String v = fi.readStringUntil('\r');
       fi.readStringUntil('\n');
-      json_response += "\""+ v+ "\"" ;
+      json_response += "\"" + v + "\"" ;
       if (fi.available())json_response += ",";
     }
     fi.close();
     json_response += "]}";
   }
- 
+
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
@@ -166,7 +171,9 @@ void setup(void) {
   if (!SD.begin(10)) {
     DBG_OUTPUT_PORT.println("initialization failed!");
   }
-
+  timeClient.begin();
+  timeClient.setTimeOffset(-10800);
+  
   // Wait for connection
   uint8_t i = 0;
   //  while (WiFi.status() != WL_CONNECTED && i++ < 20) {//wait 10 seconds
@@ -206,14 +213,21 @@ void setup(void) {
 void loop(void) {
   dnsServer.processNextRequest();
   //aca graba la temp en una funcioncon timer
-  //  if (((micros() - timerLoop) / 1000000) > 60)//(5 * 60))
-  //  {
-  //    fi = SD.open("values.txt", FILE_WRITE);
-  //    if (fi) {
-  //      float temperature1 = getTemperature(0);
-  //      fi.println( String(temperature1) );
-  //      fi.close();
-  //    }
-  //    timerLoop = micros();
-  //  }
+  if (((micros() - timerLoop) / 1000000) > 60)//(5 * 60))
+  {
+    fi = SD.open("values.txt", FILE_WRITE);
+    if (fi) {
+      float temperature1 = getTemperature(0);
+      fi.println( String(temperature1) );
+      fi.close();
+    }
+    fi = SD.open("labels.txt", FILE_WRITE);
+    if (fi) {
+      timeClient.update();
+      
+      fi.println( "" );
+      fi.close();
+    }
+    timerLoop = micros();
+  }
 }
