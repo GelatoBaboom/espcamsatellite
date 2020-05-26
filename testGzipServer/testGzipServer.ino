@@ -32,7 +32,6 @@ DallasTemperature DS18B20(&oneWire);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
-
 AsyncWebServer  server = AsyncWebServer(80);
 float getTemperature(uint8_t idx) {
   //Serial.println("index: " + String(idx));
