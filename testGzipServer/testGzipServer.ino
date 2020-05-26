@@ -64,7 +64,7 @@ void temph_handler(AsyncWebServerRequest *request) {
   String json_response;
   DBG_OUTPUT_PORT.println("entra");
 
-  fi = SD.open("values.txt");
+  fi = SD.open("VALUES.TXT");
   if (fi) {
     json_response = "{\"values\":[";
     while (fi.available()) {
@@ -76,7 +76,7 @@ void temph_handler(AsyncWebServerRequest *request) {
     fi.close();
     json_response += "]";
   }
-  fi = SD.open("labels.txt");
+  fi = SD.open("LABELS.TXT");
   if (fi) {
     json_response += ",\"labels\":[";
     while (fi.available()) {
@@ -173,7 +173,7 @@ void setup(void) {
   }
   timeClient.begin();
   timeClient.setTimeOffset(-10800);
-  
+
   // Wait for connection
   uint8_t i = 0;
   //  while (WiFi.status() != WL_CONNECTED && i++ < 20) {//wait 10 seconds
@@ -215,17 +215,17 @@ void loop(void) {
   //aca graba la temp en una funcioncon timer
   if (((micros() - timerLoop) / 1000000) > 60)//(5 * 60))
   {
-    fi = SD.open("values.txt", FILE_WRITE);
+    fi = SD.open("VALUES.TXT", FILE_WRITE);
     if (fi) {
       float temperature1 = getTemperature(0);
       fi.println( String(temperature1) );
       fi.close();
     }
-    fi = SD.open("labels.txt", FILE_WRITE);
+    fi = SD.open("LABELS.TXT", FILE_WRITE);
     if (fi) {
       timeClient.update();
-      
-      fi.println( "" );
+      DBG_OUTPUT_PORT.println(timeClient.getFormattedTime());
+      fi.println(timeClient.getFormattedTime());
       fi.close();
     }
     timerLoop = micros();
