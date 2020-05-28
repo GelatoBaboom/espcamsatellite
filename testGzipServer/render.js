@@ -1,6 +1,7 @@
 
 var chartCnf = {
     responsive: true,
+	aspectRatio: 1,
     hoverMode: 'index',
     stacked: false,
     title: {
@@ -49,13 +50,12 @@ function updateChart(data) {
 
 }
 $(document).ready(function () {
-	 render({"values":["21.5","21.6"],"labels":["10:50","10:51"]});
-    /* var interval = setInterval(function () {
+	var interval = setInterval(function () {
         if ($('#tempChart').length) {
             $.ajax({
                 type: 'GET',
                 dataType: "json",
-                url: '/getJson.ashx',
+                url: '/getTempJson',
                 processData: true,
                 async: false,
                 success: function (resp) {
@@ -68,5 +68,5 @@ $(document).ready(function () {
             });
 
         }
-    }, 2000); */
+    }, 10000); 
 });

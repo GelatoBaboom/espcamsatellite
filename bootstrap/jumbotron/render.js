@@ -1,6 +1,7 @@
 
 var chartCnf = {
     responsive: true,
+	aspectRatio: 1,
     hoverMode: 'index',
     stacked: false,
     title: {

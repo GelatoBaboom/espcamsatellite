@@ -182,7 +182,7 @@ void setup(void) {
 
   server.on("/", HTTP_GET, index_handler);
   server.on("/temp", HTTP_GET, temp_handler);
-  server.on("/getJson.ashx", HTTP_GET, temph_handler);
+  server.on("/getTempJson", HTTP_GET, temph_handler);
   server.on("/bootstrap.bundle.min.js", HTTP_GET, bootstrapjs_handler);
   server.on("/bootstrap.css", HTTP_GET, bootstrapcss_handler);
   server.on("/jquery-3.js", HTTP_GET, jquerymin_handler);
