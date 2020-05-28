@@ -94,59 +94,46 @@ void temph_handler(AsyncWebServerRequest *request) {
 }
 
 void index_handler(AsyncWebServerRequest * request) {
-  // Dump the byte array in PROGMEM with a 200 HTTP code (OK)
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_gz, index_len);
-
-  // Tell the browswer the contemnt is Gzipped
   response->addHeader("Content-Encoding", "gzip");
-  // And set the last-modified datetime so we can check if we need to send it again next time or not
-  //response->addHeader("Last-Modified", last_modified);
   request->send(response);
 }
 
 void chartjs_handler(AsyncWebServerRequest * request) {
-  // Dump the byte array in PROGMEM with a 200 HTTP code (OK)
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", chartjs_gz, chartjs_len);
-
-  // Tell the browswer the contemnt is Gzipped
   response->addHeader("Content-Encoding", "gzip");
-  // And set the last-modified datetime so we can check if we need to send it again next time or not
-  //response->addHeader("Last-Modified", last_modified);
   request->send(response);
 }
 
 void renderjs_handler(AsyncWebServerRequest * request) {
-  // Dump the byte array in PROGMEM with a 200 HTTP code (OK)
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", renderjs_gz, renderjs_len);
-
-  // Tell the browswer the contemnt is Gzipped
   response->addHeader("Content-Encoding", "gzip");
-  // And set the last-modified datetime so we can check if we need to send it again next time or not
-  //response->addHeader("Last-Modified", last_modified);
   request->send(response);
 }
 
 void utilsjs_handler(AsyncWebServerRequest * request) {
-  // Dump the byte array in PROGMEM with a 200 HTTP code (OK)
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", utils_gz, utils_len);
-
-  // Tell the browswer the contemnt is Gzipped
   response->addHeader("Content-Encoding", "gzip");
-  // And set the last-modified datetime so we can check if we need to send it again next time or not
-  //response->addHeader("Last-Modified", last_modified);
   request->send(response);
 }
 
 void jquerymin_handler(AsyncWebServerRequest * request) {
-  // Dump the byte array in PROGMEM with a 200 HTTP code (OK)
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", jquerymin_gz, jquerymin_len);
-
-  // Tell the browswer the contemnt is Gzipped
   response->addHeader("Content-Encoding", "gzip");
-  // And set the last-modified datetime so we can check if we need to send it again next time or not
-  //response->addHeader("Last-Modified", last_modified);
   request->send(response);
 }
+
+void bootstrapjs_handler(AsyncWebServerRequest * request) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", bootstrapjs_gz, bootstrapjs_len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
+void bootstrapcss_handler(AsyncWebServerRequest * request) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", bootstrapcss_gz, bootstrapcss_len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
+
 void setup(void) {
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
@@ -198,8 +185,10 @@ void setup(void) {
   server.on("/", HTTP_GET, index_handler);
   server.on("/temp", HTTP_GET, temp_handler);
   server.on("/getJson.ashx", HTTP_GET, temph_handler);
-  server.on("/jquery.min.js", HTTP_GET, jquerymin_handler);
-  server.on("/chart.js", HTTP_GET, chartjs_handler);
+  server.on("/bootstrap.bundle.min.js", HTTP_GET, bootstrapjs_handler);
+  server.on("/bootstrap.css", HTTP_GET, bootstrapcss_handler);
+  server.on("/jquery-3.js", HTTP_GET, jquerymin_handler);
+  server.on("/chart.min.js", HTTP_GET, chartjs_handler);
   server.on("/render.js", HTTP_GET, renderjs_handler);
   server.on("/utils.js", HTTP_GET, utilsjs_handler);
   server.onNotFound(index_handler);
