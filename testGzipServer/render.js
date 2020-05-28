@@ -49,7 +49,8 @@ function updateChart(data) {
 
 }
 $(document).ready(function () {
-    var interval = setInterval(function () {
+	 render({"values":["21.5","21.6"],"labels":["10:50","10:51"]});
+    /* var interval = setInterval(function () {
         if ($('#tempChart').length) {
             $.ajax({
                 type: 'GET',
@@ -67,5 +68,5 @@ $(document).ready(function () {
             });
 
         }
-    }, 2000);
+    }, 2000); */
 });
