@@ -61,8 +61,6 @@ void temp_handler(AsyncWebServerRequest *request) {
 }
 void temph_handler(AsyncWebServerRequest *request) {
   String json_response;
-  DBG_OUTPUT_PORT.println("entra");
-
   fi = SD.open("VALUES.TXT");
   if (fi) {
     json_response = "{\"values\":[";
