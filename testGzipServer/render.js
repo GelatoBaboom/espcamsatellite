@@ -49,24 +49,29 @@ function updateChart(data) {
     lineChart.update();
 
 }
-$(document).ready(function () {
-	var interval = setInterval(function () {
-        if ($('#tempChart').length) {
-            $.ajax({
-                type: 'GET',
-                dataType: "json",
-                url: '/getTempJson',
-                processData: true,
-                async: false,
-                success: function (resp) {
-                    if (!graphRendered) {
-                        render(resp);
-                    } else {
-                        updateChart(resp);
-                    }
-                }
-            });
+function getTempJson()
+{
+  if ($('#tempChart').length) {
+		$.ajax({
+			type: 'GET',
+			dataType: "json",
+			url: '/getTempJson?t=236',
+			processData: true,
+			async: false,
+			success: function (resp) {
+				if (!graphRendered) {
+					render(resp);
+				} else {
+					updateChart(resp);
+				}
+			}
+		});
 
-        }
+	}	
+}
+$(document).ready(function () {
+	getTempJson();
+	var interval = setInterval(function () {
+      getTempJson();
     }, 10000); 
 });

@@ -3,6 +3,7 @@
 #include <WiFiClient.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <time.h>
 //#include <ESP8266WebServer.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
@@ -60,6 +61,17 @@ void temp_handler(AsyncWebServerRequest *request) {
   request->send(response);
 }
 void temph_handler(AsyncWebServerRequest *request) {
+
+  int params = request->params();
+  DBG_OUTPUT_PORT.println("Param count: " + String(params));
+  for (int i = 0; i < params; i++) {
+    AsyncWebParameter* p = request->getParam(i);
+    DBG_OUTPUT_PORT.print("Param name: ");
+    DBG_OUTPUT_PORT.println(p->name());
+    DBG_OUTPUT_PORT.print("Param value: ");
+    DBG_OUTPUT_PORT.println(p->value());
+    DBG_OUTPUT_PORT.println("------");
+  }
   String json_response;
   fi = SD.open("VALUES.TXT");
   if (fi) {
@@ -199,6 +211,11 @@ void setup(void) {
 void loop(void) {
   dnsServer.processNextRequest();
   //aca graba la temp en una funcioncon timer
+  timeClient.update();
+  unsigned long epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime ((time_t *)&epochTime);
+  int currentMonth = ptm->tm_mon + 1;
+  DBG_OUTPUT_PORT.println(String(currentMonth));
   if (((micros() - timerLoop) / 1000000) > 60)//(5 * 60))
   {
     fi = SD.open("VALUES.TXT", FILE_WRITE);
@@ -210,7 +227,6 @@ void loop(void) {
     fi = SD.open("LABELS.TXT", FILE_WRITE);
     if (fi) {
       timeClient.update();
-      DBG_OUTPUT_PORT.println(timeClient.getFormattedTime());
       fi.println(timeClient.getFormattedTime());
       fi.close();
     }
