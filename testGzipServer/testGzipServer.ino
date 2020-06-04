@@ -60,20 +60,76 @@ void temp_handler(AsyncWebServerRequest *request) {
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
-void temph_handler(AsyncWebServerRequest *request) {
+void getDirectory(File dir, int level, String *json) {
+  bool newEntry = true;
+  while (true) {
 
+    File entry =  dir.openNextFile();
+    if (! entry) {
+      break;
+    }
+    if (!newEntry) {
+      *json += ",";
+    } else {
+      newEntry = false;
+    }
+    if (entry.isDirectory()) {
+      if (level == 1) {
+        *json += "{\"year\":";
+        *json +=  entry.name();
+        *json += ", \"months\":[";
+        getDirectory(entry, 2, json);
+        *json += "]}";
+      }
+      if (level == 2) {
+        *json += "{\"month\":";
+        *json +=  entry.name();
+        *json += ", \"days\":[";
+        getDirectory(entry, 3, json);
+        *json += "]}";
+      } if (level == 3) {
+        *json += "\"";
+        *json += entry.name();
+        *json += "\"";
+      }
+    }
+    entry.close();
+  }
+}
+void getRegisters_handler(AsyncWebServerRequest * request) {
+  String json_response;
+  File root = SD.open("/");
+  json_response = "{\"registers\":[";
+  getDirectory(root, 1, &json_response);
+  json_response += "]}";
+
+
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+void temph_handler(AsyncWebServerRequest *request) {
+  int currentYear = 0;
+  int currentMonth = 0;
+  int currentDay = 0;
   int params = request->params();
   DBG_OUTPUT_PORT.println("Param count: " + String(params));
   for (int i = 0; i < params; i++) {
     AsyncWebParameter* p = request->getParam(i);
-    DBG_OUTPUT_PORT.print("Param name: ");
-    DBG_OUTPUT_PORT.println(p->name());
-    DBG_OUTPUT_PORT.print("Param value: ");
-    DBG_OUTPUT_PORT.println(p->value());
-    DBG_OUTPUT_PORT.println("------");
+    if ((p->name()) == "y") {
+      currentYear = (p->value()).toInt();
+    }
+    if ((p->name()) == "m") {
+      currentMonth = (p->value()).toInt();
+    }
+    if ((p->name()) == "d") {
+      currentDay = (p->value()).toInt();
+    }
   }
+  //that block has to be replaced whit month and day from params
   String json_response;
-  fi = SD.open("VALUES.TXT");
+  DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+  fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
   if (fi) {
     json_response = "{\"values\":[";
     while (fi.available()) {
@@ -85,7 +141,7 @@ void temph_handler(AsyncWebServerRequest *request) {
     fi.close();
     json_response += "]";
   }
-  fi = SD.open("LABELS.TXT");
+  fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT");
   if (fi) {
     json_response += ",\"labels\":[";
     while (fi.available()) {
@@ -169,7 +225,7 @@ void setup(void) {
   }
   timeClient.begin();
   timeClient.setTimeOffset(-10800);
-
+  timeClient.update();
   // Wait for connection
   uint8_t i = 0;
   //  while (WiFi.status() != WL_CONNECTED && i++ < 20) {//wait 10 seconds
@@ -194,6 +250,7 @@ void setup(void) {
 
   server.on("/", HTTP_GET, index_handler);
   server.on("/temp", HTTP_GET, temp_handler);
+  server.on("/getRegs", HTTP_GET, getRegisters_handler);
   server.on("/getTempJson", HTTP_GET, temph_handler);
   server.on("/bootstrap.bundle.min.js", HTTP_GET, bootstrapjs_handler);
   server.on("/bootstrap.css", HTTP_GET, bootstrapcss_handler);
@@ -207,24 +264,28 @@ void setup(void) {
   DBG_OUTPUT_PORT.println("HTTP server started");
 
 }
+void registerData()
+{
 
-void loop(void) {
-  dnsServer.processNextRequest();
-  //aca graba la temp en una funcioncon timer
-  timeClient.update();
-  unsigned long epochTime = timeClient.getEpochTime();
-  struct tm *ptm = gmtime ((time_t *)&epochTime);
-  int currentMonth = ptm->tm_mon + 1;
-  DBG_OUTPUT_PORT.println(String(currentMonth));
-  if (((micros() - timerLoop) / 1000000) > 60)//(5 * 60))
+  if (((micros() - timerLoop) / 1000000) > (5 * 60))
   {
-    fi = SD.open("VALUES.TXT", FILE_WRITE);
+    timeClient.update();
+    unsigned long epochTime = timeClient.getEpochTime();
+    struct tm *ptm = gmtime ((time_t *)&epochTime);
+    int currentMonth = ptm->tm_mon + 1;
+    int currentDay = ptm->tm_mday;
+    int currentYear = ptm->tm_year;
+    if (!SD.exists(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
+    {
+      SD.mkdir(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+    }
+    fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
     if (fi) {
       float temperature1 = getTemperature(0);
       fi.println( String(temperature1) );
       fi.close();
     }
-    fi = SD.open("LABELS.TXT", FILE_WRITE);
+    fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
     if (fi) {
       timeClient.update();
       fi.println(timeClient.getFormattedTime());
@@ -232,4 +293,9 @@ void loop(void) {
     }
     timerLoop = micros();
   }
+
+}
+void loop(void) {
+  dnsServer.processNextRequest();
+  registerData();
 }
