@@ -274,7 +274,7 @@ void registerData()
     struct tm *ptm = gmtime ((time_t *)&epochTime);
     int currentMonth = ptm->tm_mon + 1;
     int currentDay = ptm->tm_mday;
-    int currentYear = ptm->tm_year;
+    int currentYear = ptm->tm_year + 1900;
     if (!SD.exists(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
     {
       SD.mkdir(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));

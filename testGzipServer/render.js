@@ -97,31 +97,74 @@ function Records_CLASS() {
 		},
 		renderRegList: function () {
 			var thiscomp = this;
-			var regList = $('#regList');
+			var yCont = $('#yCont');
+			var mCont = $('#mCont');
+			var dCont = $('#dCont');
+			yCont.empty();
+			mCont.empty();
+			dCont.empty();
 			$.each(thiscomp.registers, function (idx, yvalue) {
-				var yliEl = $('<li>' + yvalue.year + '</li>');
-				yulEl = $('<ul/>');
-				$.each(yvalue.months, function (idx, mvalue) {
-					var mliEl = $('<li>' + mvalue.month + '</li>');
-					mulEl = $('<ul/>');
-					$.each(mvalue.days, function (idx, dvalue) {
-						var dliEl = $('<li>' + dvalue + '</li>');
-						dliEl.click(function () {
-							thiscomp.selectedReg.year = yvalue.year;
-							thiscomp.selectedReg.month = mvalue.month;
-							thiscomp.selectedReg.day = dvalue;
-							thiscomp.renderTempGraph();
+				var yEl = null;
+				if (thiscomp.selectedReg.year == yvalue.year) {
+					yEl = $('<div/>', {
+							'class': 'ydv ydvSel',
+							'text': yvalue.year
 						});
-
-						mulEl.append(dliEl);
+					$.each(yvalue.months, function (idx, mvalue) {
+						var mEl = null;
+						if (thiscomp.selectedReg.month == mvalue.month) {
+							mEl = $('<div/>', {
+									'class': 'ydv ydvSel',
+									'text': mvalue.month
+								});
+							$.each(mvalue.days, function (idx, dvalue) {
+								var dEl = null;
+								if (thiscomp.selectedReg.day == dvalue) {
+									dEl = $('<div/>', {
+											'class': 'ydv ydvSel',
+											'text': dvalue
+										});
+								} else {
+									dEl = $('<div/>', {
+											'class': 'ydv',
+											'text': dvalue
+										});
+								}
+								dEl.click(function () {
+									thiscomp.selectedReg.year = yvalue.year;
+									thiscomp.selectedReg.month = mvalue.month;
+									thiscomp.selectedReg.day = dvalue;
+									thiscomp.renderRegList();
+									thiscomp.renderTempGraph();
+								});
+								dCont.append(dEl);
+							});
+						} else {
+							mEl = $('<div/>', {
+									'class': 'ydv',
+									'text': mvalue.month
+								});
+						}
+						mEl.click(function () {
+							thiscomp.selectedReg.month = mvalue.month;
+							thiscomp.selectedReg.day = mvalue.days[0];
+							thiscomp.renderRegList();
+						});
+						mCont.append(mEl);
 					});
-					mliEl.append(mulEl);
-					yulEl.append(mliEl);
-
+				} else {
+					yEl = $('<div/>', {
+							'class': 'ydv',
+							'text': yvalue.year
+						});
+				}
+				yEl.click(function () {
+					thiscomp.selectedReg.year = yvalue.year;
+					thiscomp.selectedReg.month = yvalue.months[0].month;
+					thiscomp.selectedReg.day = yvalue.months[0].days[0];
+					thiscomp.renderRegList();
 				});
-				yliEl.append(yulEl);
-				regList.append(yliEl);
-
+				yCont.append(yEl);
 			});
 
 		},
@@ -146,8 +189,8 @@ $(document).ready(function () {
 	r.loadRegsBase();
 	console.log(r);
 	r.selectedReg.year = r.registers[r.registers.length - 1].year;
-	r.selectedReg.month = r.registers[0].months[0].month;
-	r.selectedReg.day = r.registers[0].months[r.registers[0].months.length - 1].days[r.registers[0].months[r.registers[0].months.length - 1].days.length - 1];
+	r.selectedReg.month = r.registers[r.registers.length - 1].months[0].month;
+	r.selectedReg.day = r.registers[r.registers.length - 1].months[0].days[r.registers[r.registers.length - 1].months[0].days.length - 1];
 	r.renderRegList();
 	r.renderTempGraph();
 
