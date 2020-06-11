@@ -16,9 +16,17 @@ function Records_CLASS() {
 			year: 0,
 			month: 0,
 			day: 0,
+			samples: 0
 		},
 		init: function (chartElId) {
+			var thiscomp = this;
 			this.chartEl = $('#' + chartElId);
+			var sampleInp = $('#' + chartElId + 'Samples');
+			sampleInp.change(function () {
+				thiscomp.selectedReg.samples = sampleInp.val();
+				$('#' + chartElId + 'SamplesLabel').text(sampleInp.attr('max') - (sampleInp.val() - 1));
+				thiscomp.renderTempGraph();
+			});
 		},
 		chartCnf: {
 			responsive: true,
@@ -31,24 +39,24 @@ function Records_CLASS() {
 			},
 			scales: {
 				yAxes: [{
-						type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
-						display: true,
-						position: "left",
-						id: "y-axis-1",
-					}
+					type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
+					display: true,
+					position: "left",
+					id: "y-axis-1",
+				}
 				],
 			}
 		},
 		speedData: {
 			labels: [],
 			datasets: [{
-					label: "Temperatura",
-					data: [],
-					borderColor: "#0368AE",
-					lineTension: 0.3,
-					fill: 'start',
-					yAxisID: "y-axis-1",
-				}
+				label: "Temperatura",
+				data: [],
+				borderColor: "#0368AE",
+				lineTension: 0.3,
+				fill: 'start',
+				yAxisID: "y-axis-1",
+			}
 			]
 
 		},
@@ -58,10 +66,10 @@ function Records_CLASS() {
 			spData.labels = data.labels;
 			spData.datasets[0].data = data.values;
 			this.lineChart = new Chart(this.chartEl, {
-					type: 'line',
-					data: spData,
-					options: chrt
-				});
+				type: 'line',
+				data: spData,
+				options: chrt
+			});
 			this.graphRendered = true;
 		},
 		updateChart: function (data) {
@@ -80,7 +88,8 @@ function Records_CLASS() {
 					data: {
 						y: thiscomp.selectedReg.year,
 						m: thiscomp.selectedReg.month,
-						d: thiscomp.selectedReg.day
+						d: thiscomp.selectedReg.day,
+						s: thiscomp.selectedReg.samples
 					},
 					processData: true,
 					async: false,
@@ -107,28 +116,28 @@ function Records_CLASS() {
 				var yEl = null;
 				if (thiscomp.selectedReg.year == yvalue.year) {
 					yEl = $('<div/>', {
-							'class': 'ydv ydvSel',
-							'text': yvalue.year
-						});
+						'class': 'datedv datedvSel',
+						'text': yvalue.year
+					});
 					$.each(yvalue.months, function (idx, mvalue) {
 						var mEl = null;
 						if (thiscomp.selectedReg.month == mvalue.month) {
 							mEl = $('<div/>', {
-									'class': 'ydv ydvSel',
-									'text': mvalue.month
-								});
+								'class': 'datedv datedvSel',
+								'text': mvalue.month
+							});
 							$.each(mvalue.days, function (idx, dvalue) {
 								var dEl = null;
 								if (thiscomp.selectedReg.day == dvalue) {
 									dEl = $('<div/>', {
-											'class': 'ydv ydvSel',
-											'text': dvalue
-										});
+										'class': 'datedv datedvSel',
+										'text': dvalue
+									});
 								} else {
 									dEl = $('<div/>', {
-											'class': 'ydv',
-											'text': dvalue
-										});
+										'class': 'datedv',
+										'text': dvalue
+									});
 								}
 								dEl.click(function () {
 									thiscomp.selectedReg.year = yvalue.year;
@@ -141,9 +150,9 @@ function Records_CLASS() {
 							});
 						} else {
 							mEl = $('<div/>', {
-									'class': 'ydv',
-									'text': mvalue.month
-								});
+								'class': 'datedv',
+								'text': mvalue.month
+							});
 						}
 						mEl.click(function () {
 							thiscomp.selectedReg.month = mvalue.month;
@@ -154,9 +163,9 @@ function Records_CLASS() {
 					});
 				} else {
 					yEl = $('<div/>', {
-							'class': 'ydv',
-							'text': yvalue.year
-						});
+						'class': 'datedv',
+						'text': yvalue.year
+					});
 				}
 				yEl.click(function () {
 					thiscomp.selectedReg.year = yvalue.year;
@@ -195,6 +204,6 @@ $(document).ready(function () {
 	r.renderTempGraph();
 
 	var interval = setInterval(function () {
-			r.renderTempGraph();
-		}, 10000);
+		r.renderTempGraph();
+	}, 10000);
 });

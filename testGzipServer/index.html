@@ -36,15 +36,33 @@
                 font-size: 3.5rem;
             }
         }
-         .ydv {
+
+        .datedv {
             display: inline-table;
             padding: 4px;
             border: 1px solid #dadada;
+            cursor: pointer;
         }
 
-        .ydvSel {
+        .datedvSel {
             background-color: #dadada;
         }
+
+        .dateCont {
+            border: 1px solid #898989;
+        }
+
+        .dateTitleDv {
+            border: 1px solid #868686;
+            background-color: #b9cbff;
+            border-bottom: none;
+            border-top: none;
+            padding: 2px 0px 2px 5px;
+        }
+
+            .dateTitleDv:first-child {
+                border-top: 1px solid #868686;
+            }
     </style>
 </head>
 <body>
@@ -107,9 +125,15 @@
                 <div class="col-md-6">
                     <h2>Registros disponibles</h2>
                     <div>
-                        <div id="yCont"></div>
-                        <div id="mCont"></div>
-                        <div id="dCont"></div>
+                        <div class="dateTitleDv">Año</div><div id="yCont" class="dateCont"></div>
+                        <div class="dateTitleDv">Mes</div><div id="mCont" class="dateCont"></div>
+                        <div class="dateTitleDv">Dia</div><div id="dCont" class="dateCont"></div>
+                        <div style="margin-top:15px;">
+                            Muestras por hora: <b id="tempChartSamplesLabel">12</b>
+                            <div style="margin-top:5px;">
+                                <input id="tempChartSamples" type="range" min="1" max="12" value="1" />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

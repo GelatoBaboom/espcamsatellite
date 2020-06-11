@@ -112,6 +112,9 @@ void temph_handler(AsyncWebServerRequest *request) {
   int currentYear = 0;
   int currentMonth = 0;
   int currentDay = 0;
+  int currentResolution = 0;
+  int res = 0;
+
   int params = request->params();
   DBG_OUTPUT_PORT.println("Param count: " + String(params));
   for (int i = 0; i < params; i++) {
@@ -125,6 +128,9 @@ void temph_handler(AsyncWebServerRequest *request) {
     if ((p->name()) == "d") {
       currentDay = (p->value()).toInt();
     }
+     if ((p->name()) == "s") {
+      currentResolution = (p->value()).toInt();
+    }
   }
   //that block has to be replaced whit month and day from params
   String json_response;
@@ -132,23 +138,44 @@ void temph_handler(AsyncWebServerRequest *request) {
   fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
   if (fi) {
     json_response = "{\"values\":[";
+    float promV = 0;
     while (fi.available()) {
       String v = fi.readStringUntil('\r');
       fi.readStringUntil('\n');
-      json_response += v ;
-      if (fi.available())json_response += ",";
+      promV = promV + v.toFloat();
+      res++;
+      if (res >= currentResolution) {
+        json_response += String(promV / res) ;
+        res = 0;
+        promV = 0;
+        if (fi.available())json_response += ",";
+      }
+    }
+    if (res > 0)
+    {
+      json_response += String(promV / res) ;
     }
     fi.close();
     json_response += "]";
   }
+  res = 0;
   fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT");
   if (fi) {
     json_response += ",\"labels\":[";
+    String v = "";
     while (fi.available()) {
-      String v = fi.readStringUntil('\r');
+      v = fi.readStringUntil('\r');
       fi.readStringUntil('\n');
+      res++;
+      if (res >= currentResolution) {
+        json_response += "\"" + v + "\"" ;
+        res = 0;
+        if (fi.available())json_response += ",";
+      }
+    }
+    if (res > 0)
+    {
       json_response += "\"" + v + "\"" ;
-      if (fi.available())json_response += ",";
     }
     fi.close();
     json_response += "]}";
