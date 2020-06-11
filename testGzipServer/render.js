@@ -156,8 +156,9 @@ function Records_CLASS() {
 						}
 						mEl.click(function () {
 							thiscomp.selectedReg.month = mvalue.month;
-							thiscomp.selectedReg.day = mvalue.days[0];
+							thiscomp.selectedReg.day = 0;
 							thiscomp.renderRegList();
+							thiscomp.renderTempGraph();
 						});
 						mCont.append(mEl);
 					});
@@ -189,6 +190,22 @@ function Records_CLASS() {
 					thiscomp.registers = resp.registers;
 				}
 			});
+		},
+		setDateTempNow: function (dateElId, timeElMain, tempElId) {
+			var thiscomp = this;
+			$.ajax({
+				type: 'GET',
+				dataType: "json",
+				url: '/temp',
+				processData: true,
+				async: false,
+				success: function (resp) {
+					resp.registers;
+					$('#' + dateElId).text((resp.day < 10 ? '0' + resp.day : resp.day) + '/' + (resp.month < 10 ? '0' + resp.month : resp.month));
+					$('#' + timeElMain).text((resp.hour < 10 ? '0' + resp.hour : resp.hour) + ':' + (resp.minute < 10 ? '0' + resp.minute : resp.minute));
+					$('#' + tempElId).text(resp.temp);
+				}
+			});
 		}
 
 	}
@@ -206,4 +223,8 @@ $(document).ready(function () {
 	var interval = setInterval(function () {
 		r.renderTempGraph();
 	}, 10000);
+	r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
+	var interval = setInterval(function () {
+		r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
+	}, 30000);
 });

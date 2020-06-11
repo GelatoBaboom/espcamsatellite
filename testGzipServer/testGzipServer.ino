@@ -1,4 +1,3 @@
-
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <NTPClient.h>
@@ -48,11 +47,24 @@ float getTemperature(uint8_t idx) {
   return temp;
 }
 void temp_handler(AsyncWebServerRequest *request) {
+  timeClient.update();
+  unsigned long epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime ((time_t *)&epochTime);
+  int currentMonth = ptm->tm_mon + 1;
+  int currentDay = ptm->tm_mday;
+
+  int currentHour = ptm->tm_hour;
+  int currentMinute = ptm->tm_min;
+
   static char json_response[1024];
 
   char * p = json_response;
   *p++ = '{';
-  p += sprintf(p, "\"temp\":\"%.1f\"", getTemperature(0));
+  p += sprintf(p, "\"temp\":\"%.1f\",", getTemperature(0));
+  p += sprintf(p, "\"month\":%i,",  currentMonth);
+  p += sprintf(p, "\"day\":%i,", currentDay);
+  p += sprintf(p, "\"hour\":%i,", currentHour);
+  p += sprintf(p, "\"minute\":%i", currentMinute);
   *p++ = '}';
   *p++ = 0;
 
@@ -108,33 +120,11 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
-void temph_handler(AsyncWebServerRequest *request) {
-  int currentYear = 0;
-  int currentMonth = 0;
-  int currentDay = 0;
-  int currentResolution = 0;
+String getDaily(int currentYear, int currentMonth, int currentDay, int currentResolution )
+{
   int res = 0;
-
-  int params = request->params();
-  DBG_OUTPUT_PORT.println("Param count: " + String(params));
-  for (int i = 0; i < params; i++) {
-    AsyncWebParameter* p = request->getParam(i);
-    if ((p->name()) == "y") {
-      currentYear = (p->value()).toInt();
-    }
-    if ((p->name()) == "m") {
-      currentMonth = (p->value()).toInt();
-    }
-    if ((p->name()) == "d") {
-      currentDay = (p->value()).toInt();
-    }
-     if ((p->name()) == "s") {
-      currentResolution = (p->value()).toInt();
-    }
-  }
-  //that block has to be replaced whit month and day from params
   String json_response;
-  DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+  //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
   fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
   if (fi) {
     json_response = "{\"values\":[";
@@ -179,6 +169,85 @@ void temph_handler(AsyncWebServerRequest *request) {
     }
     fi.close();
     json_response += "]}";
+  }
+  return json_response;
+}
+String getMonthly(int currentYear, int currentMonth, int currentResolution )
+{
+  int res = 0;
+  String json_response;
+  String monthsLabels ;
+  //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+  File dir = SD.open(String(currentYear) + "/" + String(currentMonth) );
+  json_response = "{\"values\":[";
+  bool firstEntry = true;
+  while (true) {
+    File entry =  dir.openNextFile();
+    if (!entry) {
+      break;
+    }
+    if (!firstEntry) {
+      json_response += ",";
+      monthsLabels += + ",";
+
+    }
+    firstEntry = false;
+    res = 0;
+    File fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/VALUES.TXT");
+    if (fi) {
+      float promV = 0;
+      while (fi.available()) {
+        String v = fi.readStringUntil('\r');
+        fi.readStringUntil('\n');
+        promV = promV + v.toFloat();
+        res++;
+      }
+      json_response += String(promV / res) ;
+
+      monthsLabels += "\"" ;
+      monthsLabels += + entry.name();
+      monthsLabels += + "\"";
+    }
+    fi.close();
+
+    entry.close();
+  }
+  json_response += "]";
+  json_response += ",\"labels\":[";
+  json_response += monthsLabels;
+  json_response += "]}";
+  return json_response;
+}
+void temph_handler(AsyncWebServerRequest *request) {
+  int currentYear = 0;
+  int currentMonth = 0;
+  int currentDay = 0;
+  int currentResolution = 0;
+
+
+  int params = request->params();
+  DBG_OUTPUT_PORT.println("Param count: " + String(params));
+  for (int i = 0; i < params; i++) {
+    AsyncWebParameter* p = request->getParam(i);
+    if ((p->name()) == "y") {
+      currentYear = (p->value()).toInt();
+    }
+    if ((p->name()) == "m") {
+      currentMonth = (p->value()).toInt();
+    }
+    if ((p->name()) == "d") {
+      currentDay = (p->value()).toInt();
+    }
+    if ((p->name()) == "s") {
+      currentResolution = (p->value()).toInt();
+    }
+  }
+  //that block has to be replaced whit month and day from params
+  String json_response;
+  if (currentDay != 0) {
+    json_response = getDaily(currentYear, currentMonth, currentDay, currentResolution);
+  } else {
+    json_response = getMonthly(currentYear, currentMonth, currentResolution);
   }
 
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);

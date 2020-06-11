@@ -37,6 +37,13 @@
             }
         }
 
+        .displayData {
+            padding: 4px 10px 4px 10px;
+            background: #dadada;
+            border-radius: 4px;
+            font-size: 18px;
+        }
+
         .datedv {
             display: inline-table;
             padding: 4px;
@@ -104,7 +111,8 @@
         <!-- Main jumbotron for a primary marketing message or call to action -->
         <div class="jumbotron">
             <div class="container">
-                <h2 class="display-3">Bienvenido</h2>
+                <span class="displayData"><span id="mainDate">11/06</span> <b id="mainTime">10:32</b></span>
+                <h2 id="mainTemp" class="display-3" style="margin-top:-5px;"><span>24.45</span>º</h2>
                 <p>
                     Este es un servicio de monitoreo, registro y alerta de temperatura. la idea es hacer un sistema completo de registro de datos.<br />
                     Todo el sistema esta embebido en un microcontrolador ESP8266 alimentado por energia solar.
@@ -137,13 +145,16 @@
                     </div>
                 </div>
             </div>
-            <div class="row">
+            <!--<div class="row">
                 <div class="col-md-12">
                     <h2>Heading</h2>
-                    <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
+                    <p>
+                        Este es un servicio de monitoreo, registro y alerta de temperatura. la idea es hacer un sistema completo de registro de datos.<br />
+                        Todo el sistema esta embebido en un microcontrolador ESP8266 alimentado por energia solar.
+                    </p>
                     <p><a class="btn btn-secondary" href="#" role="button">View details &raquo;</a></p>
                 </div>
-            </div>
+            </div>-->
 
             <hr>
         </div> <!-- /container -->
