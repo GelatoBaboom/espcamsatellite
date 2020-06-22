@@ -123,6 +123,9 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
 String getDaily(int currentYear, int currentMonth, int currentDay, int currentResolution )
 {
   int res = 0;
+  float minT = 500;
+  float maxT = -127;
+  float current = 0;
   String json_response;
   //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
   fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
@@ -132,7 +135,10 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
     while (fi.available()) {
       String v = fi.readStringUntil('\r');
       fi.readStringUntil('\n');
-      promV = promV + v.toFloat();
+      current = v.toFloat();
+      promV = promV + current ;
+      minT = current < minT ? current : minT;
+      maxT = current > maxT ? current : maxT;
       res++;
       if (res >= currentResolution) {
         json_response += String(promV / res) ;
@@ -168,8 +174,13 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
       json_response += "\"" + v + "\"" ;
     }
     fi.close();
-    json_response += "]}";
+    json_response += "],";
+
   }
+  json_response += "\"stats\":{";
+  json_response += "\"max\":" + String(maxT);
+  json_response += ",\"min\":" + String(minT);
+  json_response += "}}";
   return json_response;
 }
 String getMonthly(int currentYear, int currentMonth, int currentResolution )

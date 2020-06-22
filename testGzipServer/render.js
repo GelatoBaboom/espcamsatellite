@@ -18,6 +18,10 @@ function Records_CLASS() {
 			day: 0,
 			samples: 0
 		},
+		stats: {
+			maxTemp: 0,
+			minTemp: 0
+		},
 		init: function (chartElId) {
 			var thiscomp = this;
 			this.chartEl = $('#' + chartElId);
@@ -39,24 +43,24 @@ function Records_CLASS() {
 			},
 			scales: {
 				yAxes: [{
-					type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
-					display: true,
-					position: "left",
-					id: "y-axis-1",
-				}
+						type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
+						display: true,
+						position: "left",
+						id: "y-axis-1",
+					}
 				],
 			}
 		},
 		speedData: {
 			labels: [],
 			datasets: [{
-				label: "Temperatura",
-				data: [],
-				borderColor: "#0368AE",
-				lineTension: 0.3,
-				fill: 'start',
-				yAxisID: "y-axis-1",
-			}
+					label: "Temperatura",
+					data: [],
+					borderColor: "#0368AE",
+					lineTension: 0.3,
+					fill: 'start',
+					yAxisID: "y-axis-1",
+				}
 			]
 
 		},
@@ -66,10 +70,10 @@ function Records_CLASS() {
 			spData.labels = data.labels;
 			spData.datasets[0].data = data.values;
 			this.lineChart = new Chart(this.chartEl, {
-				type: 'line',
-				data: spData,
-				options: chrt
-			});
+					type: 'line',
+					data: spData,
+					options: chrt
+				});
 			this.graphRendered = true;
 		},
 		updateChart: function (data) {
@@ -99,6 +103,8 @@ function Records_CLASS() {
 						} else {
 							thiscomp.updateChart(resp);
 						}
+						thiscomp.stats.maxTemp = resp.stats.max;
+						thiscomp.stats.minTemp = resp.stats.min;
 					}
 				});
 
@@ -116,28 +122,28 @@ function Records_CLASS() {
 				var yEl = null;
 				if (thiscomp.selectedReg.year == yvalue.year) {
 					yEl = $('<div/>', {
-						'class': 'datedv datedvSel',
-						'text': yvalue.year
-					});
+							'class': 'datedv datedvSel',
+							'text': yvalue.year
+						});
 					$.each(yvalue.months, function (idx, mvalue) {
 						var mEl = null;
 						if (thiscomp.selectedReg.month == mvalue.month) {
 							mEl = $('<div/>', {
-								'class': 'datedv datedvSel',
-								'text': mvalue.month
-							});
+									'class': 'datedv datedvSel',
+									'text': mvalue.month
+								});
 							$.each(mvalue.days, function (idx, dvalue) {
 								var dEl = null;
 								if (thiscomp.selectedReg.day == dvalue) {
 									dEl = $('<div/>', {
-										'class': 'datedv datedvSel',
-										'text': dvalue
-									});
+											'class': 'datedv datedvSel',
+											'text': dvalue
+										});
 								} else {
 									dEl = $('<div/>', {
-										'class': 'datedv',
-										'text': dvalue
-									});
+											'class': 'datedv',
+											'text': dvalue
+										});
 								}
 								dEl.click(function () {
 									thiscomp.selectedReg.year = yvalue.year;
@@ -150,9 +156,9 @@ function Records_CLASS() {
 							});
 						} else {
 							mEl = $('<div/>', {
-								'class': 'datedv',
-								'text': mvalue.month
-							});
+									'class': 'datedv',
+									'text': mvalue.month
+								});
 						}
 						mEl.click(function () {
 							thiscomp.selectedReg.month = mvalue.month;
@@ -164,9 +170,9 @@ function Records_CLASS() {
 					});
 				} else {
 					yEl = $('<div/>', {
-						'class': 'datedv',
-						'text': yvalue.year
-					});
+							'class': 'datedv',
+							'text': yvalue.year
+						});
 				}
 				yEl.click(function () {
 					thiscomp.selectedReg.year = yvalue.year;
@@ -206,6 +212,11 @@ function Records_CLASS() {
 					$('#' + tempElId).text(resp.temp);
 				}
 			});
+		},
+		setStats: function (minTempElId, maxTempElId) {
+			var thiscomp = this;
+			$('#' + minTempElId).text(thiscomp.stats.minTemp);
+			$('#' + maxTempElId).text(thiscomp.stats.maxTemp);
 		}
 
 	}
@@ -221,10 +232,11 @@ $(document).ready(function () {
 	r.renderTempGraph();
 
 	var interval = setInterval(function () {
-		r.renderTempGraph();
-	}, 10000);
+			r.renderTempGraph();
+			r.setStats('minT','maxT');
+		}, 10000);
 	r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
 	var interval = setInterval(function () {
-		r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
-	}, 30000);
+			r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
+		}, 30000);
 });
