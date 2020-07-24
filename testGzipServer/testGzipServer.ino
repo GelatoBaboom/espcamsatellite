@@ -18,11 +18,15 @@ IPAddress apIP(192, 168, 4, 1);
 #define DBG_OUTPUT_PORT Serial
 #define CS_PIN  D8
 #define ONE_WIRE_BUS_PIN  D1
+#define LEDPIN 2
 
 const char* ssid = "GelatoBaboom";
 const char* password = "friofrio";
 const char* host = "esp8266sd";
 uint32_t timerLoop;
+bool justWakedUp = true;
+int regTime = 60 * 5;
+
 DNSServer dnsServer;
 File fi;
 
@@ -110,7 +114,7 @@ void getDirectory(File dir, int level, String *json) {
 }
 void getRegisters_handler(AsyncWebServerRequest * request) {
   String json_response;
-  File root = SD.open("/");
+  File root = SD.open("/regs/");
   json_response = "{\"registers\":[";
   getDirectory(root, 1, &json_response);
   json_response += "]}";
@@ -128,7 +132,7 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
   float current = 0;
   String json_response;
   //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
-  fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
+  fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
   if (fi) {
     json_response = "{\"values\":[";
     float promV = 0;
@@ -155,7 +159,7 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
     json_response += "]";
   }
   res = 0;
-  fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT");
+  fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT");
   if (fi) {
     json_response += ",\"labels\":[";
     String v = "";
@@ -189,7 +193,7 @@ String getMonthly(int currentYear, int currentMonth, int currentResolution )
   String json_response;
   String monthsLabels ;
   //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
-  File dir = SD.open(String(currentYear) + "/" + String(currentMonth) );
+  File dir = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) );
   json_response = "{\"values\":[";
   bool firstEntry = true;
   while (true) {
@@ -204,7 +208,7 @@ String getMonthly(int currentYear, int currentMonth, int currentResolution )
     }
     firstEntry = false;
     res = 0;
-    File fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/VALUES.TXT");
+    File fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/VALUES.TXT");
     if (fi) {
       float promV = 0;
       while (fi.available()) {
@@ -306,8 +310,81 @@ void bootstrapcss_handler(AsyncWebServerRequest * request) {
   response->addHeader("Content-Encoding", "gzip");
   request->send(response);
 }
+void registerData()
+{
 
+  timeClient.update();
+  unsigned long epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime ((time_t *)&epochTime);
+  int currentMonth = ptm->tm_mon + 1;
+  int currentDay = ptm->tm_mday;
+  int currentYear = ptm->tm_year + 1900;
+  if (currentYear > 1969) {
+    if (!SD.exists("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
+    {
+      SD.mkdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+    }
+    fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
+    if (fi) {
+      float temperature1 = getTemperature(0);
+      fi.println( String(temperature1) );
+      fi.close();
+    }
+    fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
+    if (fi) {
+      timeClient.update();
+      fi.println(timeClient.getFormattedTime());
+      fi.close();
+    }
+    timerLoop = micros();
+  }
+
+
+}
+void checkSleepMode()
+{
+  DBG_OUTPUT_PORT.println("checking config" );
+  fi = SD.open("/configs/sleepmode.txt");
+  if (fi) {
+    DBG_OUTPUT_PORT.println("config file found" );
+    int topH = 0;
+    int bottomH = 0;
+    if (fi.available()) {
+      DBG_OUTPUT_PORT.println("config file available" );
+      String v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      topH = v.toInt();
+      v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      bottomH = v.toInt();
+      timeClient.update();
+      unsigned long epochTime = timeClient.getEpochTime();
+      struct tm *ptm = gmtime ((time_t *)&epochTime);
+      int currentHour = ptm->tm_hour;
+      int currentMinute = ptm->tm_min;
+      DBG_OUTPUT_PORT.println("current H " + String(currentHour) + " TopH: " + String(topH) + " BottomH: " + String(bottomH) );
+      if ((topH < bottomH && currentHour >= topH && currentHour < bottomH) || (topH > bottomH && (currentHour >= topH || currentHour < bottomH)))
+      {
+        for (int i = 0 ; i < 10; i++)
+        {
+          digitalWrite(LEDPIN, LOW);
+          delay(100);
+          digitalWrite(LEDPIN, HIGH);
+          delay(100);
+
+        }
+        if (justWakedUp) {
+          registerData();
+        }
+        DBG_OUTPUT_PORT.println("imma gonna sleep");
+        ESP.deepSleep(1000000 * (regTime));
+      }
+    }
+  }
+}
 void setup(void) {
+  pinMode(LEDPIN, OUTPUT);
+  //digitalWrite(LEDPIN, HIGH);
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
   DBG_OUTPUT_PORT.print("\n");
@@ -319,22 +396,33 @@ void setup(void) {
   //  WiFi.softAP("EspServer", NULL);
 
   WiFi.mode(WIFI_AP_STA );
-  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-  WiFi.softAP("EspServer", NULL);
   WiFi.begin(ssid, password);
-
-  dnsServer.start(53, "*", apIP);
-
+  //quizas aca chequear....
   DBG_OUTPUT_PORT.print("Connecting to ");
   DBG_OUTPUT_PORT.println(ssid);
+  uint8_t wtries = 0;
+  while (WiFi.status() != WL_CONNECTED && wtries++ < 10) {//wait 10 seconds
+    digitalWrite(LEDPIN, LOW);
+    delay(500);
+    digitalWrite(LEDPIN, HIGH);
+    delay(500);
+  }
   if (!SD.begin(10)) {
     DBG_OUTPUT_PORT.println("initialization failed!");
   }
   timeClient.begin();
   timeClient.setTimeOffset(-10800);
   timeClient.update();
+  checkSleepMode();
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+  WiFi.softAP("EspServer", NULL);
+
+
+  dnsServer.start(53, "*", apIP);
+
+
   // Wait for connection
-  uint8_t i = 0;
+  //uint8_t i = 0;
   //  while (WiFi.status() != WL_CONNECTED && i++ < 20) {//wait 10 seconds
   //    delay(500);
   //  }
@@ -371,38 +459,14 @@ void setup(void) {
   DBG_OUTPUT_PORT.println("HTTP server started");
 
 }
-void registerData()
-{
 
-  if (((micros() - timerLoop) / 1000000) > (5 * 60))
-  {
-    timeClient.update();
-    unsigned long epochTime = timeClient.getEpochTime();
-    struct tm *ptm = gmtime ((time_t *)&epochTime);
-    int currentMonth = ptm->tm_mon + 1;
-    int currentDay = ptm->tm_mday;
-    int currentYear = ptm->tm_year + 1900;
-    if (!SD.exists(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
-    {
-      SD.mkdir(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
-    }
-    fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
-    if (fi) {
-      float temperature1 = getTemperature(0);
-      fi.println( String(temperature1) );
-      fi.close();
-    }
-    fi = SD.open(String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
-    if (fi) {
-      timeClient.update();
-      fi.println(timeClient.getFormattedTime());
-      fi.close();
-    }
-    timerLoop = micros();
-  }
 
-}
 void loop(void) {
+  justWakedUp = false;
   dnsServer.processNextRequest();
-  registerData();
+  if (((micros() - timerLoop) / 1000000) > (regTime))
+  {
+    registerData();
+    checkSleepMode();
+  }
 }

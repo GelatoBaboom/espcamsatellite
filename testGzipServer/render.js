@@ -176,8 +176,8 @@ function Records_CLASS() {
 				}
 				yEl.click(function () {
 					thiscomp.selectedReg.year = yvalue.year;
-					thiscomp.selectedReg.month = yvalue.months[0].month;
-					thiscomp.selectedReg.day = yvalue.months[0].days[0];
+					thiscomp.selectedReg.month = yvalue.months[yvalue.months.length-1].month;
+					thiscomp.selectedReg.day = yvalue.months[yvalue.months.length-1].days[yvalue.months[yvalue.months.length-1].days.length-1];
 					thiscomp.renderRegList();
 				});
 				yCont.append(yEl);
@@ -225,9 +225,13 @@ $(document).ready(function () {
 	var r = new Records('tempChart');
 	r.loadRegsBase();
 	console.log(r);
-	r.selectedReg.year = r.registers[r.registers.length - 1].year;
-	r.selectedReg.month = r.registers[r.registers.length - 1].months[0].month;
-	r.selectedReg.day = r.registers[r.registers.length - 1].months[0].days[r.registers[r.registers.length - 1].months[0].days.length - 1];
+	var yIdx = r.registers.length - 1;
+	var mIdx = r.registers[yIdx].months.length - 1;
+	var dIdx = r.registers[yIdx].months[mIdx].days.length - 1;
+	
+	r.selectedReg.year = r.registers[yIdx].year;
+	r.selectedReg.month = r.registers[yIdx].months[mIdx].month;
+	r.selectedReg.day = r.registers[yIdx].months[mIdx].days[dIdx];
 	r.renderRegList();
 	r.renderTempGraph();
 
