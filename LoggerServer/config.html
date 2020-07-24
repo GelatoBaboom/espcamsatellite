@@ -1,0 +1,157 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="MonoDev">
+    <title>FungoServer</title>
+    <!-- Bootstrap core CSS -->
+    <link href="bootstrap.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 3.5rem;
+        }
+
+        .bg-dark {
+            background-color: #4387ca !important;
+        }
+
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .navbar-collapse {
+            transition: .4s;
+        }
+
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {
+                font-size: 3.5rem;
+            }
+        }
+
+        .displayData {
+            padding: 4px 10px 4px 10px;
+            background: #dadada;
+            border-radius: 4px;
+            font-size: 18px;
+        }
+
+        .datedv {
+            display: inline-table;
+            padding: 4px;
+            border: 1px solid #dadada;
+            cursor: pointer;
+        }
+
+        .datedvSel {
+            background-color: #dadada;
+        }
+
+        .dateCont {
+            border: 1px solid #898989;
+        }
+
+        .dateTitleDv {
+            border: 1px solid #868686;
+            background-color: #b9cbff;
+            border-bottom: none;
+            border-top: none;
+            padding: 2px 0px 2px 5px;
+        }
+
+            .dateTitleDv:first-child {
+                border-top: 1px solid #868686;
+            }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <a class="navbar-brand" href="#"><img alt="" style="height:40px;margin-top:-5px;margin-right:10px;" src="logo.svg" />FungoServer</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item ">
+                    <a class="nav-link" href="">Home <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="config">Configuración</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main role="main">
+
+        <!-- Main jumbotron for a primary marketing message or call to action -->
+        <div class="jumbotron">
+            <div class="container">
+                <h1>Configuración</h1>
+                <p>Ajustes del dispositivo</p>
+            </div>
+        </div>
+
+        <div class="container">
+            <!-- Example row of columns -->
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h2>Ajustes WiFi</h2>
+                    <div class="form-group">
+                        <label for="exampleInputEmail1">Nombre de Red (SSID)</label>
+                        <input type="text" class="form-control" id="apssid" aria-describedby="apssidHelp" placeholder="Nombre de la red del dispositivo">
+                        <small id="apssidHelp" class="form-text text-muted">Este es el nombre de la red que el dispositivo creara (AP).</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="exampleInputEmail1">Contraseña de Red</label>
+                        <input type="text" class="form-control" id="appass" aria-describedby="appassHelp" placeholder="Contraseña de red">
+                        <small id="appassHelp" class="form-text text-muted">Dejar vacio para usar red abierta.</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h2>Internet getway</h2>
+                    <div class="form-group">
+                        <label for="exampleInputEmail1">Nombre de red a conectar (SSID)</label>
+                        <input type="text" class="form-control" id="wifissid" aria-describedby="wifissidHelp" placeholder="Nombre de la red a conectar">
+                        <small id="wifissidHelp" class="form-text text-muted">Nombre de la red wifi que tiene la conexion a internet.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="exampleInputEmail1">Contraseña de Red</label>
+                        <input type="text" class="form-control" id="wifipass" aria-describedby="wifipassHelp" placeholder="Contraseña de red">
+                        <small id="wifipassHelp" class="form-text text-muted">Dejar vacio si es una red abierta.</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h2>Ajustes de registro</h2>
+                    <div class="form-group">
+                        <label for="exampleInputEmail1">Tiempo de espera</label>
+                        <input type="number" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Tiempo en minutos">
+                        <small id="emailHelp" class="form-text text-muted">Cantidad de minutos que espera para registrar un valor de temperatura/humedad.</small>
+                    </div>
+                </div>
+
+            </div>
+            <div class="row">
+            </div>
+            <hr>
+        </div> <!-- /container -->
+    </main>
+    <footer class="container">
+        <p><a href="http://monodev.tk" target="_blank"><img alt="" style="height:80px;margin-top:-5px;" src="monodev.svg" /></a> &copy; 2016-2020</p>
+    </footer>
+    <script src="jquery-3.js" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="jquery-3.js"><\/script>')</script>
+    <script src="bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="configs.js"></script>
+    
+</body>
+</html>

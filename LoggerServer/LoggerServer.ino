@@ -50,6 +50,33 @@ float getTemperature(uint8_t idx) {
 
   return temp;
 }
+String getConfigsToJSON()
+{
+  String json_response = "[";
+  fi = SD.open("/configs/configs.ini");
+  if (fi) {
+    while (fi.available()) {
+      String v = fi.readStringUntil(',');
+      json_response += "{\"key\":\"";
+      json_response += v;
+      json_response += "\",\"value\":\"";
+      v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      json_response += v;
+      json_response += "\"}";
+      if (fi.available())json_response += ",";
+
+    }
+    json_response += "]";
+  }
+  return json_response;
+}
+void configsjson_handler(AsyncWebServerRequest *request) {
+  String json_response = getConfigsToJSON();
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
 void temp_handler(AsyncWebServerRequest *request) {
   timeClient.update();
   unsigned long epochTime = timeClient.getEpochTime();
@@ -275,6 +302,11 @@ void index_handler(AsyncWebServerRequest * request) {
   response->addHeader("Content-Encoding", "gzip");
   request->send(response);
 }
+void  configpage_handler(AsyncWebServerRequest * request) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", configpage_gz, configpage_len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
 
 void chartjs_handler(AsyncWebServerRequest * request) {
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", chartjs_gz, chartjs_len);
@@ -287,7 +319,11 @@ void renderjs_handler(AsyncWebServerRequest * request) {
   response->addHeader("Content-Encoding", "gzip");
   request->send(response);
 }
-
+void configsjs_handler(AsyncWebServerRequest * request) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", configsjs_gz, configsjs_len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
 void utilsjs_handler(AsyncWebServerRequest * request) {
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", utils_gz, utils_len);
   response->addHeader("Content-Encoding", "gzip");
@@ -454,7 +490,7 @@ void setup(void) {
 
   //Pages
   server.on("/", HTTP_GET, index_handler);
-  server.on("/config", HTTP_GET, index_handler);
+  server.on("/config", HTTP_GET, configpage_handler);
   server.onNotFound(index_handler);
   //statics
   server.on("/bootstrap.bundle.min.js", HTTP_GET, bootstrapjs_handler);
@@ -463,14 +499,16 @@ void setup(void) {
   server.on("/chart.min.js", HTTP_GET, chartjs_handler);
   server.on("/render.js", HTTP_GET, renderjs_handler);
   server.on("/utils.js", HTTP_GET, utilsjs_handler);
+  server.on("/configs.js", HTTP_GET, configsjs_handler);
   server.on("/logo.svg", HTTP_GET, logosvg_handler);
   server.on("/monodev.svg", HTTP_GET, monodevsvg_handler);
   //API
   server.on("/api/temp", HTTP_GET, temp_handler);
   server.on("/api/getRegs", HTTP_GET, getRegisters_handler);
   server.on("/api/getTempJson", HTTP_GET, temph_handler);
-  
-  
+  server.on("/api/getConfigsJson", HTTP_GET, configsjson_handler);
+
+
 
   server.begin();
   DBG_OUTPUT_PORT.println("HTTP server started");
