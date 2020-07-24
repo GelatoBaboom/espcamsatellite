@@ -88,7 +88,7 @@ function Records_CLASS() {
 				$.ajax({
 					type: 'GET',
 					dataType: "json",
-					url: '/getTempJson',
+					url: '/api/getTempJson',
 					data: {
 						y: thiscomp.selectedReg.year,
 						m: thiscomp.selectedReg.month,
@@ -189,7 +189,7 @@ function Records_CLASS() {
 			$.ajax({
 				type: 'GET',
 				dataType: "json",
-				url: '/getRegs',
+				url: '/api/getRegs',
 				processData: true,
 				async: false,
 				success: function (resp) {
@@ -202,7 +202,7 @@ function Records_CLASS() {
 			$.ajax({
 				type: 'GET',
 				dataType: "json",
-				url: '/temp',
+				url: '/api/temp',
 				processData: true,
 				async: false,
 				success: function (resp) {

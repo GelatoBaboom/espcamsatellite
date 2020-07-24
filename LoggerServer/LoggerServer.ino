@@ -310,6 +310,16 @@ void bootstrapcss_handler(AsyncWebServerRequest * request) {
   response->addHeader("Content-Encoding", "gzip");
   request->send(response);
 }
+void logosvg_handler(AsyncWebServerRequest * request) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, "image/svg+xml", logosvg_gz, logosvg_len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
+void monodevsvg_handler(AsyncWebServerRequest * request) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, "image/svg+xml", monodevsvg_gz, monodevsvg_len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
 void registerData()
 {
 
@@ -442,19 +452,25 @@ void setup(void) {
   //    DBG_OUTPUT_PORT.println(".local");
   //  }
 
-
+  //Pages
   server.on("/", HTTP_GET, index_handler);
   server.on("/config", HTTP_GET, index_handler);
-  server.on("/temp", HTTP_GET, temp_handler);
-  server.on("/getRegs", HTTP_GET, getRegisters_handler);
-  server.on("/getTempJson", HTTP_GET, temph_handler);
+  server.onNotFound(index_handler);
+  //statics
   server.on("/bootstrap.bundle.min.js", HTTP_GET, bootstrapjs_handler);
   server.on("/bootstrap.css", HTTP_GET, bootstrapcss_handler);
   server.on("/jquery-3.js", HTTP_GET, jquerymin_handler);
   server.on("/chart.min.js", HTTP_GET, chartjs_handler);
   server.on("/render.js", HTTP_GET, renderjs_handler);
   server.on("/utils.js", HTTP_GET, utilsjs_handler);
-  server.onNotFound(index_handler);
+  server.on("/logo.svg", HTTP_GET, logosvg_handler);
+  server.on("/monodev.svg", HTTP_GET, monodevsvg_handler);
+  //API
+  server.on("/api/temp", HTTP_GET, temp_handler);
+  server.on("/api/getRegs", HTTP_GET, getRegisters_handler);
+  server.on("/api/getTempJson", HTTP_GET, temph_handler);
+  
+  
 
   server.begin();
   DBG_OUTPUT_PORT.println("HTTP server started");
