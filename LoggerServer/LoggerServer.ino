@@ -26,6 +26,8 @@ const char* host = "esp8266sd";
 uint32_t timerLoop;
 bool justWakedUp = true;
 int regTime = 60 * 5;
+String filecont = "";
+bool configHasChanges = false;
 
 DNSServer dnsServer;
 File fi;
@@ -69,11 +71,90 @@ String getConfigsToJSON()
     }
     json_response += "]";
   }
+  fi.close();
   return json_response;
 }
 void configsjson_handler(AsyncWebServerRequest *request) {
   String json_response = getConfigsToJSON();
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+void setConfigs(String key, String val)
+{
+  if (!configHasChanges) {
+    filecont = "";
+    DBG_OUTPUT_PORT.println("open file");
+    fi = SD.open("/configs/configs.ini");
+    String v = "";
+    if (fi) {
+      while (fi.available()) {
+        v = fi.readStringUntil(',');
+        filecont += v ;
+        filecont += ",";
+        if (v == key)
+        {
+          DBG_OUTPUT_PORT.println("key found");
+          DBG_OUTPUT_PORT.println("value: " + val);
+          filecont += val;
+          filecont += "\r\n";
+          fi.readStringUntil('\r');
+          fi.readStringUntil('\n');
+          DBG_OUTPUT_PORT.println("val put");
+        } else {
+          v = fi.readStringUntil('\r');
+          fi.readStringUntil('\n');
+          filecont += v;
+          filecont += "\r\n";
+        }
+      }
+      DBG_OUTPUT_PORT.println("file cont: " + filecont);
+      fi.close();
+      DBG_OUTPUT_PORT.println("file closed");
+      configHasChanges = true;
+
+      //    //SD.remove("/configs/configs.ini");
+      //    DBG_OUTPUT_PORT.println("file deleted");
+      //    fi = SD.open("/configs/config.ini", FILE_WRITE);
+      //    int l = 0;
+      //    int to = 10;
+      //    DBG_OUTPUT_PORT.println("open to write");
+      //    if (fi) {
+      //      while (l < filecont.length() - 1) {
+      //        to = l + 10 < filecont.length() - 1 ? l + 10 : filecont.length() - 1;
+      //        DBG_OUTPUT_PORT.println("chunk: " + filecont.substring(l, to));
+      //        v = filecont.substring(l, to);
+      //        fi.print("pop");
+      //        l += to;
+      //      }
+      //    } else
+      //    {
+      //      DBG_OUTPUT_PORT.println("WTF!!");
+      //    }
+      //
+      //    DBG_OUTPUT_PORT.println("writed");
+      //    fi.close();
+      //    DBG_OUTPUT_PORT.println("file closed again");
+    }
+  }
+
+}
+void setconfig_handler(AsyncWebServerRequest *request) {
+  String k = "";
+  String v = "";
+  int params = request->params();
+  for (int i = 0; i < params; i++) {
+    AsyncWebParameter* p = request->getParam(i);
+    if ((p->name()) == "k") {
+      k = (p->value());
+    }
+    if ((p->name()) == "v") {
+      v = (p->value());
+    }
+  }
+  setConfigs(k, v);
+
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -387,47 +468,7 @@ void registerData()
 
 
 }
-void checkSleepMode()
-{
-  DBG_OUTPUT_PORT.println("checking config" );
-  fi = SD.open("/configs/sleepmode.txt");
-  if (fi) {
-    DBG_OUTPUT_PORT.println("config file found" );
-    int topH = 0;
-    int bottomH = 0;
-    if (fi.available()) {
-      DBG_OUTPUT_PORT.println("config file available" );
-      String v = fi.readStringUntil('\r');
-      fi.readStringUntil('\n');
-      topH = v.toInt();
-      v = fi.readStringUntil('\r');
-      fi.readStringUntil('\n');
-      bottomH = v.toInt();
-      timeClient.update();
-      unsigned long epochTime = timeClient.getEpochTime();
-      struct tm *ptm = gmtime ((time_t *)&epochTime);
-      int currentHour = ptm->tm_hour;
-      int currentMinute = ptm->tm_min;
-      DBG_OUTPUT_PORT.println("current H " + String(currentHour) + " TopH: " + String(topH) + " BottomH: " + String(bottomH) );
-      if ((topH < bottomH && currentHour >= topH && currentHour < bottomH) || (topH > bottomH && (currentHour >= topH || currentHour < bottomH)))
-      {
-        for (int i = 0 ; i < 10; i++)
-        {
-          digitalWrite(LEDPIN, LOW);
-          delay(100);
-          digitalWrite(LEDPIN, HIGH);
-          delay(100);
 
-        }
-        if (justWakedUp) {
-          registerData();
-        }
-        DBG_OUTPUT_PORT.println("imma gonna sleep");
-        ESP.deepSleep(1000000 * (regTime));
-      }
-    }
-  }
-}
 void setup(void) {
   pinMode(LEDPIN, OUTPUT);
   //digitalWrite(LEDPIN, HIGH);
@@ -459,7 +500,7 @@ void setup(void) {
   timeClient.begin();
   timeClient.setTimeOffset(-10800);
   timeClient.update();
-  checkSleepMode();
+  //checkSleepMode();
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   WiFi.softAP("EspServer", NULL);
 
@@ -507,7 +548,7 @@ void setup(void) {
   server.on("/api/getRegs", HTTP_GET, getRegisters_handler);
   server.on("/api/getTempJson", HTTP_GET, temph_handler);
   server.on("/api/getConfigsJson", HTTP_GET, configsjson_handler);
-
+  server.on("/api/setConfig", HTTP_GET, setconfig_handler);
 
 
   server.begin();
@@ -522,6 +563,15 @@ void loop(void) {
   if (((micros() - timerLoop) / 1000000) > (regTime))
   {
     registerData();
-    checkSleepMode();
+    //checkSleepMode();
+  }
+  if (configHasChanges)
+  {
+    SD.remove("/configs/configs.ini");
+    DBG_OUTPUT_PORT.println("file deleted");
+    fi = SD.open("/configs/configs.ini", FILE_WRITE);
+    fi.print(filecont);
+    fi.close();
+    configHasChanges = false;
   }
 }
