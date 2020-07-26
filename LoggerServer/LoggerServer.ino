@@ -22,6 +22,8 @@ IPAddress apIP(192, 168, 4, 1);
 
 const char* ssid = "GelatoBaboom";
 const char* password = "friofrio";
+const char*  apssid = "FungoServer";
+const char* appass = NULL;
 const char* host = "esp8266sd";
 uint32_t timerLoop;
 bool justWakedUp = true;
@@ -112,29 +114,6 @@ void setConfigs(String key, String val)
       fi.close();
       DBG_OUTPUT_PORT.println("file closed");
       configHasChanges = true;
-
-      //    //SD.remove("/configs/configs.ini");
-      //    DBG_OUTPUT_PORT.println("file deleted");
-      //    fi = SD.open("/configs/config.ini", FILE_WRITE);
-      //    int l = 0;
-      //    int to = 10;
-      //    DBG_OUTPUT_PORT.println("open to write");
-      //    if (fi) {
-      //      while (l < filecont.length() - 1) {
-      //        to = l + 10 < filecont.length() - 1 ? l + 10 : filecont.length() - 1;
-      //        DBG_OUTPUT_PORT.println("chunk: " + filecont.substring(l, to));
-      //        v = filecont.substring(l, to);
-      //        fi.print("pop");
-      //        l += to;
-      //      }
-      //    } else
-      //    {
-      //      DBG_OUTPUT_PORT.println("WTF!!");
-      //    }
-      //
-      //    DBG_OUTPUT_PORT.println("writed");
-      //    fi.close();
-      //    DBG_OUTPUT_PORT.println("file closed again");
     }
   }
 
@@ -229,6 +208,12 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
 
 
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+void reboot_handler(AsyncWebServerRequest * request) {
+  ESP.restart();
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -468,6 +453,54 @@ void registerData()
 
 
 }
+void loadConfigs()
+{
+  String k = "";
+  String v = "";
+  fi = SD.open("/configs/configs.ini");
+  if (fi) {
+    while (fi.available()) {
+      k = fi.readStringUntil(',');
+      v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      if (k == "regtime")
+      {
+        regTime = (v.toInt()) * 60;
+      }
+      if (k == "apssid")
+      {
+        apssid = v;
+      }
+      if (k == "appass")
+      {
+        appass = v == "" ? NULL : v;
+      }
+      if (k == "wifissid")
+      {
+        ssid = v;
+      }
+      if (k == "wifipass")
+      {
+        password = v == "" ? NULL : v;
+      }
+    }
+
+  }
+  fi.close();
+
+}
+void updateConfig() {
+  if (configHasChanges)
+  {
+    SD.remove("/configs/configs.ini");
+    DBG_OUTPUT_PORT.println("file deleted");
+    fi = SD.open("/configs/configs.ini", FILE_WRITE);
+    fi.print(filecont);
+    fi.close();
+    configHasChanges = false;
+    loadConfigs();
+  }
+}
 
 void setup(void) {
   pinMode(LEDPIN, OUTPUT);
@@ -475,13 +508,17 @@ void setup(void) {
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
   DBG_OUTPUT_PORT.print("\n");
+
+  if (!SD.begin(10)) {
+    DBG_OUTPUT_PORT.println("initialization failed!");
+  }
+  loadConfigs();
   //WiFi.mode(WIFI_STA);
   //WiFi.begin(ssid, password);
 
   //  WiFi.mode(WIFI_AP);
   //  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   //  WiFi.softAP("EspServer", NULL);
-
   WiFi.mode(WIFI_AP_STA );
   WiFi.begin(ssid, password);
   //quizas aca chequear....
@@ -494,15 +531,13 @@ void setup(void) {
     digitalWrite(LEDPIN, HIGH);
     delay(500);
   }
-  if (!SD.begin(10)) {
-    DBG_OUTPUT_PORT.println("initialization failed!");
-  }
+
   timeClient.begin();
   timeClient.setTimeOffset(-10800);
   timeClient.update();
   //checkSleepMode();
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-  WiFi.softAP("EspServer", NULL);
+  WiFi.softAP(apssid, appass);
 
 
   dnsServer.start(53, "*", apIP);
@@ -549,7 +584,7 @@ void setup(void) {
   server.on("/api/getTempJson", HTTP_GET, temph_handler);
   server.on("/api/getConfigsJson", HTTP_GET, configsjson_handler);
   server.on("/api/setConfig", HTTP_GET, setconfig_handler);
-
+  server.on("/api/reboot", HTTP_GET, reboot_handler);
 
   server.begin();
   DBG_OUTPUT_PORT.println("HTTP server started");
@@ -563,15 +598,7 @@ void loop(void) {
   if (((micros() - timerLoop) / 1000000) > (regTime))
   {
     registerData();
-    //checkSleepMode();
   }
-  if (configHasChanges)
-  {
-    SD.remove("/configs/configs.ini");
-    DBG_OUTPUT_PORT.println("file deleted");
-    fi = SD.open("/configs/configs.ini", FILE_WRITE);
-    fi.print(filecont);
-    fi.close();
-    configHasChanges = false;
-  }
+  updateConfig();
+
 }
