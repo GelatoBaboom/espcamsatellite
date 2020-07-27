@@ -20,10 +20,10 @@ IPAddress apIP(192, 168, 4, 1);
 #define ONE_WIRE_BUS_PIN  D1
 #define LEDPIN 2
 
-const char* ssid = "GelatoBaboom";
-const char* password = "friofrio";
+char* wifissid = "GelatoBaboom";
+char* wifipass = "friofrio";
 const char*  apssid = "FungoServer";
-const char* appass = NULL;
+char* appass = NULL;
 const char* host = "esp8266sd";
 uint32_t timerLoop;
 bool justWakedUp = true;
@@ -110,7 +110,6 @@ void setConfigs(String key, String val)
           filecont += "\r\n";
         }
       }
-      DBG_OUTPUT_PORT.println("file cont: " + filecont);
       fi.close();
       DBG_OUTPUT_PORT.println("file closed");
       configHasChanges = true;
@@ -212,10 +211,10 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
   request->send(response);
 }
 void reboot_handler(AsyncWebServerRequest * request) {
+  while (configHasChanges)  {
+    delay(500);
+  }
   ESP.restart();
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
-  response->addHeader("Access-Control-Allow-Origin", "*");
-  request->send(response);
 }
 String getDaily(int currentYear, int currentMonth, int currentDay, int currentResolution )
 {
@@ -453,40 +452,28 @@ void registerData()
 
 
 }
-void loadConfigs()
+const char* getConfigs(String key)
 {
   String k = "";
   String v = "";
   fi = SD.open("/configs/configs.ini");
+  DBG_OUTPUT_PORT.println("Open config");
   if (fi) {
     while (fi.available()) {
       k = fi.readStringUntil(',');
       v = fi.readStringUntil('\r');
       fi.readStringUntil('\n');
-      if (k == "regtime")
+      DBG_OUTPUT_PORT.println("Key:" + k);
+      if (k == key)
       {
-        regTime = (v.toInt()) * 60;
-      }
-      if (k == "apssid")
-      {
-        apssid = v;
-      }
-      if (k == "appass")
-      {
-        appass = v == "" ? NULL : v;
-      }
-      if (k == "wifissid")
-      {
-        ssid = v;
-      }
-      if (k == "wifipass")
-      {
-        password = v == "" ? NULL : v;
+        fi.close();
+        if (v == "")return NULL;
+        return v.c_str();
       }
     }
-
   }
   fi.close();
+  return NULL;
 
 }
 void updateConfig() {
@@ -495,10 +482,12 @@ void updateConfig() {
     SD.remove("/configs/configs.ini");
     DBG_OUTPUT_PORT.println("file deleted");
     fi = SD.open("/configs/configs.ini", FILE_WRITE);
+    DBG_OUTPUT_PORT.println("data: \r\n" + filecont);
     fi.print(filecont);
+    DBG_OUTPUT_PORT.println("file printed again");
     fi.close();
     configHasChanges = false;
-    loadConfigs();
+    //loadConfigs();
   }
 }
 
@@ -511,8 +500,9 @@ void setup(void) {
 
   if (!SD.begin(10)) {
     DBG_OUTPUT_PORT.println("initialization failed!");
+    while (1) delay(500);
   }
-  loadConfigs();
+  //  loadConfigs();
   //WiFi.mode(WIFI_STA);
   //WiFi.begin(ssid, password);
 
@@ -520,10 +510,11 @@ void setup(void) {
   //  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   //  WiFi.softAP("EspServer", NULL);
   WiFi.mode(WIFI_AP_STA );
-  WiFi.begin(ssid, password);
+  //WiFi.begin(getConfigs("wifissid"), getConfigs("wifipass"));
+  WiFi.begin(wifissid, wifipass);
   //quizas aca chequear....
   DBG_OUTPUT_PORT.print("Connecting to ");
-  DBG_OUTPUT_PORT.println(ssid);
+  DBG_OUTPUT_PORT.println(wifissid);
   uint8_t wtries = 0;
   while (WiFi.status() != WL_CONNECTED && wtries++ < 10) {//wait 10 seconds
     digitalWrite(LEDPIN, LOW);
@@ -537,8 +528,8 @@ void setup(void) {
   timeClient.update();
   //checkSleepMode();
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-  WiFi.softAP(apssid, appass);
 
+  WiFi.softAP(apssid, appass);
 
   dnsServer.start(53, "*", apIP);
 

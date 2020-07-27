@@ -40,9 +40,25 @@ function Configs_CLASS() {
                 async: true,
                 success: function (resp) { }
             });
+        },
+        resetDevice: function () {
+            $.ajax({
+                type: 'GET',
+                dataType: "json",
+                url: '/api/reboot',
+                processData: true,
+                async: true,
+                success: function (resp) {
+                    window.Location = "/";
+                }
+            });
+
         }
     }
 }
 $(document).ready(function () {
     var cfg = new Configs();
+    $('#resetBtn').click(function () {
+        cfg.resetDevice();
+    });
 });
