@@ -55,9 +55,9 @@ float getDHTTemperature() {
   float temp;
   do {
     temp = dht.readTemperature(); ;
-    delay(10);
+    delay(300);
     cts--;
-  } while ((temp == 85.0 || temp == (-127.0)) && cts > 1);
+  } while (isnan(temp) && cts > 1);
   currentTemp = temp;
   return temp;
 }
@@ -533,6 +533,13 @@ void setup(void) {
     Serial.println("Couldn't find RTC");
     Serial.flush();
     abort();
+  }
+  if (rtc.lostPower()) {
+    //don't let register if clock is unset
+    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // July 27, 2020 at 12am you would call:
+    rtc.adjust(DateTime(2020, 7, 27, 12, 0, 0));
   }
 
   dht.begin();
