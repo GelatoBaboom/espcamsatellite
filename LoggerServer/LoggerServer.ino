@@ -4,7 +4,9 @@
 #include <WiFiUdp.h>
 #include <time.h>
 #include <RTClib.h>
-#include <DHT.h>
+//#include <DHT.h>
+#include <DHTesp.h>
+
 
 //#include <ESP8266WebServer.h>
 #include <ESPAsyncWebServer.h>
@@ -32,12 +34,14 @@ char* appass = NULL;
 const char* host = "esp8266sd";
 uint32_t timerLoop;
 uint32_t timerTempLoop = 30 * 1000;
-bool justWakedUp = true;
+
 int regTime = 60 * 5;
 String filecont = "";
 bool configHasChanges = false;
+bool regEnable = true;
 
-DHT dht(DHTPin, DHTTYPE);
+//DHT dht(DHTPin, DHTTYPE);
+DHTesp dht;
 float currentTemp = -127;
 
 DNSServer dnsServer;
@@ -54,11 +58,11 @@ float getDHTTemperature() {
   int cts = 10;
   float temp;
   do {
-    temp = dht.readTemperature(); ;
+    temp = dht.getTemperature();
     delay(300);
     cts--;
   } while (isnan(temp) && cts > 1);
-  currentTemp = temp;
+  if (!isnan(temp))currentTemp = temp;
   return temp;
 }
 String getConfigsToJSON()
@@ -429,33 +433,39 @@ void monodevsvg_handler(AsyncWebServerRequest * request) {
 }
 void registerData()
 {
-  DateTime now = rtc.now();
+  if (regEnable) {
+    DateTime now = rtc.now();
+    int currentMonth = now.month();
+    int currentDay = now.day();
+    int currentYear = now.year();
+    if (currentYear > 1969) {
+      if (!SD.exists("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
+      {
+        SD.mkdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+      }
+      fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
+      if (fi) {
 
+        float temperature1 = getDHTTemperature();
+        if (!isnan(temperature1)) {
+          fi.println( String(temperature1) );
+          fi.close();
 
-  int currentMonth = now.month();
-  int currentDay = now.day();
-  int currentYear = now.year();
-  if (currentYear > 1969) {
-    if (!SD.exists("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
-    {
-      SD.mkdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
-    }
-    fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
-    if (fi) {
-      float temperature1 = getDHTTemperature();
-      fi.println( String(temperature1) );
-      fi.close();
-    }
-    fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
-    if (fi) {
+          fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
+          if (fi) {
 
-      fi.println(now.toString("hh:mm "));
-      fi.close();
+            fi.println(now.toString("hh:mm "));
+            fi.close();
+            timerLoop = millis();
+          }
+        } else
+        {
+          delay(1000);
+        }
+
+      }
     }
-    timerLoop = micros();
   }
-
-
 }
 const char* getConfigs(String key)
 {
@@ -542,7 +552,8 @@ void setup(void) {
     rtc.adjust(DateTime(2020, 7, 27, 12, 0, 0));
   }
 
-  dht.begin();
+  //dht.begin();
+  dht.setup(DHTPin, DHTesp::DHT22);
   //checkSleepMode();
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
@@ -601,18 +612,18 @@ void setup(void) {
 
 
 void loop(void) {
-  DBG_OUTPUT_PORT.println("Loop init");
-  delay(500);
-  justWakedUp = false;
+
   dnsServer.processNextRequest();
   if (((millis() - timerLoop) / 1000) > (regTime))
   {
     DBG_OUTPUT_PORT.println("Register data");
     registerData();
   }
-  if (((millis() - timerLoop) / 1000) > (15))
+  if (((millis() - timerTempLoop) / 1000) > (15))
   {
     getDHTTemperature() ;
+    DBG_OUTPUT_PORT.println("Temp: " + String(currentTemp));
+    timerTempLoop = millis();
   }
   updateConfig();
 
