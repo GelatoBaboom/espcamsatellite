@@ -3,22 +3,27 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <time.h>
+#include <RTClib.h>
+#include <DHT.h>
+
 //#include <ESP8266WebServer.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
 //#include <ESP8266mDNS.h>
 #include <DNSServer.h>
-#include "DallasTemperature.h"
-#include "OneWire.h"
+
 #include <SPI.h>
 #include <SD.h>
 #include "index.h"
 #include "jsgzip.h"
 IPAddress apIP(192, 168, 4, 1);
 #define DBG_OUTPUT_PORT Serial
-#define CS_PIN  D8
-#define ONE_WIRE_BUS_PIN  D1
+#define CS_PIN  10
+
 #define LEDPIN 2
+#define DHTTYPE DHT22
+
+uint8_t DHTPin = D3;
 
 char* wifissid = "GelatoBaboom";
 char* wifipass = "friofrio";
@@ -26,32 +31,34 @@ const char*  apssid = "FungoServer";
 char* appass = NULL;
 const char* host = "esp8266sd";
 uint32_t timerLoop;
+uint32_t timerTempLoop = 30 * 1000;
 bool justWakedUp = true;
 int regTime = 60 * 5;
 String filecont = "";
 bool configHasChanges = false;
 
+DHT dht(DHTPin, DHTTYPE);
+float currentTemp = -127;
+
 DNSServer dnsServer;
 File fi;
-
-OneWire oneWire(ONE_WIRE_BUS_PIN);
-DallasTemperature DS18B20(&oneWire);
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
+RTC_DS3231 rtc;
+
 AsyncWebServer  server = AsyncWebServer(80);
-float getTemperature(uint8_t idx) {
+float getDHTTemperature() {
   //Serial.println("index: " + String(idx));
   int cts = 10;
   float temp;
   do {
-    DS18B20.requestTemperatures();
-    temp = DS18B20.getTempCByIndex(idx);
+    temp = dht.readTemperature(); ;
     delay(10);
     cts--;
   } while ((temp == 85.0 || temp == (-127.0)) && cts > 1);
-
+  currentTemp = temp;
   return temp;
 }
 String getConfigsToJSON()
@@ -137,20 +144,19 @@ void setconfig_handler(AsyncWebServerRequest *request) {
   request->send(response);
 }
 void temp_handler(AsyncWebServerRequest *request) {
-  timeClient.update();
-  unsigned long epochTime = timeClient.getEpochTime();
-  struct tm *ptm = gmtime ((time_t *)&epochTime);
-  int currentMonth = ptm->tm_mon + 1;
-  int currentDay = ptm->tm_mday;
+  DateTime now = rtc.now();
 
-  int currentHour = ptm->tm_hour;
-  int currentMinute = ptm->tm_min;
+  int currentMonth = now.month();
+  int currentDay = now.day();
+
+  int currentHour = now.hour();
+  int currentMinute = now.minute();
 
   static char json_response[1024];
 
   char * p = json_response;
   *p++ = '{';
-  p += sprintf(p, "\"temp\":\"%.1f\",", getTemperature(0));
+  p += sprintf(p, "\"temp\":\"%.1f\",", currentTemp);
   p += sprintf(p, "\"month\":%i,",  currentMonth);
   p += sprintf(p, "\"day\":%i,", currentDay);
   p += sprintf(p, "\"hour\":%i,", currentHour);
@@ -423,13 +429,12 @@ void monodevsvg_handler(AsyncWebServerRequest * request) {
 }
 void registerData()
 {
+  DateTime now = rtc.now();
 
-  timeClient.update();
-  unsigned long epochTime = timeClient.getEpochTime();
-  struct tm *ptm = gmtime ((time_t *)&epochTime);
-  int currentMonth = ptm->tm_mon + 1;
-  int currentDay = ptm->tm_mday;
-  int currentYear = ptm->tm_year + 1900;
+
+  int currentMonth = now.month();
+  int currentDay = now.day();
+  int currentYear = now.year();
   if (currentYear > 1969) {
     if (!SD.exists("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
     {
@@ -437,14 +442,14 @@ void registerData()
     }
     fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
     if (fi) {
-      float temperature1 = getTemperature(0);
+      float temperature1 = getDHTTemperature();
       fi.println( String(temperature1) );
       fi.close();
     }
     fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
     if (fi) {
-      timeClient.update();
-      fi.println(timeClient.getFormattedTime());
+
+      fi.println(now.toString("hh:mm "));
       fi.close();
     }
     timerLoop = micros();
@@ -498,9 +503,10 @@ void setup(void) {
   DBG_OUTPUT_PORT.setDebugOutput(true);
   DBG_OUTPUT_PORT.print("\n");
 
-  if (!SD.begin(10)) {
+
+  if (!SD.begin(CS_PIN)) {
     DBG_OUTPUT_PORT.println("initialization failed!");
-    while (1) delay(500);
+    //while (1) delay(500);
   }
   //  loadConfigs();
   //WiFi.mode(WIFI_STA);
@@ -523,9 +529,13 @@ void setup(void) {
     delay(500);
   }
 
-  timeClient.begin();
-  timeClient.setTimeOffset(-10800);
-  timeClient.update();
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    abort();
+  }
+
+  dht.begin();
   //checkSleepMode();
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
@@ -584,11 +594,18 @@ void setup(void) {
 
 
 void loop(void) {
+  DBG_OUTPUT_PORT.println("Loop init");
+  delay(500);
   justWakedUp = false;
   dnsServer.processNextRequest();
-  if (((micros() - timerLoop) / 1000000) > (regTime))
+  if (((millis() - timerLoop) / 1000) > (regTime))
   {
+    DBG_OUTPUT_PORT.println("Register data");
     registerData();
+  }
+  if (((millis() - timerLoop) / 1000) > (15))
+  {
+    getDHTTemperature() ;
   }
   updateConfig();
 
