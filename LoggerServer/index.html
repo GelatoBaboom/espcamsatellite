@@ -74,11 +74,8 @@
 <body>
     <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
         <a class="navbar-brand" href="#"><img alt="" style="height:40px;margin-top:-5px;margin-right:10px;" src="/logo.svg" />FungoServer</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+      
+          <div class="collapse navbar-collapse" id="navbarsExampleDefault">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
@@ -90,6 +87,10 @@
         </div>
         <button id="cmdRegBtnInit" type="button" class="btn btn-success" style="display:none;">Registrar</button>
         <button id="cmdRegBtnStop" type="button" class="btn btn-danger" style="display:none;">Detener registro</button>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
     </nav>
     <div id="msg" style="width: 100%;position: fixed;top: -5px;margin-left: -15px;z-index: 1;">
         <div style="margin: 0 auto;width: 300px;padding: 5px;text-align: center;border-radius: 4px;background-color: #d34141;color:#fff;">msg</div>
@@ -103,7 +104,7 @@
                 <span class="displayData"><span id="mainDate"></span> <b id="mainTime"></b></span>
                 <h2 class="display-3" style="margin-top:-5px;font-size: 4.5rem"><span id="mainTemp"></span>º</h2>
                 <p>
-                    La temperatura minima para hoy fue: <b id="minT"></b><b>º</b> y la maxima: <b id="maxT"></b><b>º</b>
+                    La temperatura  minima para hoy fue: <b id="minT"></b><br />y la maxima: <b id="maxT"></b>
                 </p>
             </div>
         </div>

@@ -21,6 +21,7 @@
 IPAddress apIP(192, 168, 4, 1);
 #define DBG_OUTPUT_PORT Serial
 #define CS_PIN  10
+#define HRELAY_PIN  D0
 
 #define LEDPIN 2
 #define DHTTYPE DHT22
@@ -389,8 +390,8 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
 
   }
   json_response += "\"stats\":{";
-  json_response += "\"max\":\"" + String(maxT) + " (" + String(maxH) + "%)\",";
-  json_response += "\"min\":\"" + String(minT) + " (" + String(minH) + "%)\"";
+  json_response += "\"max\":\"" + String(maxT) + "c (" + String(maxH) + "%)\",";
+  json_response += "\"min\":\"" + String(minT) + "c (" + String(minH) + "%)\"";
   json_response += "}}";
   return json_response;
 }
@@ -628,6 +629,7 @@ void setup(void) {
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
   DBG_OUTPUT_PORT.print("\n");
+  pinMode(HRELAY_PIN, OUTPUT);
 
 
   if (!SD.begin(CS_PIN)) {
@@ -755,7 +757,11 @@ void loop(void) {
     DBG_OUTPUT_PORT.println("Temp: " + String(currentTemp));
     DBG_OUTPUT_PORT.println("Hum: " + String(currentHum));
     timerTempLoop = millis();
+    digitalWrite(HRELAY_PIN, !regEnable);
   }
   updateConfig();
+
+
+
 
 }
