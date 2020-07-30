@@ -44,6 +44,7 @@ bool rebootRequest = false;
 //DHT dht(DHTPin, DHTTYPE);
 DHTesp dht;
 float currentTemp = -127;
+float currentHum = 0;
 
 DNSServer dnsServer;
 File fi;
@@ -58,6 +59,7 @@ float getDHTTemperature() {
   //Serial.println("index: " + String(idx));
   int cts = 10;
   float temp;
+  float hum;
   do {
     temp = dht.getTemperature();
     delay(300);
@@ -65,6 +67,17 @@ float getDHTTemperature() {
   } while (isnan(temp) && cts > 1);
   if (!isnan(temp))currentTemp = temp;
   return temp;
+}
+float getDHTHumidity() {
+  int cts = 10;
+  float hum;
+  do {
+    hum = dht.getHumidity();
+    delay(300);
+    cts--;
+  } while (isnan(hum) && cts > 1);
+  if (!isnan(hum))currentHum = hum;
+  return hum;
 }
 String getConfigsToJSON()
 {
@@ -279,12 +292,15 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
   int res = 0;
   float minT = 500;
   float maxT = -127;
+  float minH = 101;
+  float maxH = -1;
   float current = 0;
   String json_response;
   //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
-  fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT");
+  //temperatura
+  fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/TVALUES.TXT");
   if (fi) {
-    json_response = "{\"values\":[";
+    json_response = "{\"tvalues\":[";
     float promV = 0;
     while (fi.available()) {
       String v = fi.readStringUntil('\r');
@@ -306,12 +322,42 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
       json_response += String(promV / res) ;
     }
     fi.close();
-    json_response += "]";
+    json_response += "],";
   }
+  //humedad
+  res = 0;
+  current = 0;
+  fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/HVALUES.TXT");
+  if (fi) {
+    json_response += "\"hvalues\":[";
+    float promV = 0;
+    while (fi.available()) {
+      String v = fi.readStringUntil('\r');
+      fi.readStringUntil('\n');
+      current = v.toFloat();
+      promV = promV + current ;
+      minH = current < minH ? current : minH;
+      maxH = current > maxH ? current : maxH;
+      res++;
+      if (res >= currentResolution) {
+        json_response += String(promV / res) ;
+        res = 0;
+        promV = 0;
+        if (fi.available())json_response += ",";
+      }
+    }
+    if (res > 0)
+    {
+      json_response += String(promV / res) ;
+    }
+    fi.close();
+    json_response += "],";
+  }
+  //Labels
   res = 0;
   fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT");
   if (fi) {
-    json_response += ",\"labels\":[";
+    json_response += "\"labels\":[";
     String v = "";
     while (fi.available()) {
       v = fi.readStringUntil('\r');
@@ -332,8 +378,8 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
 
   }
   json_response += "\"stats\":{";
-  json_response += "\"max\":" + String(maxT);
-  json_response += ",\"min\":" + String(minT);
+  json_response += "\"max\":\"" + String(maxT) + " (" + String(maxH) + "%)\",";
+  json_response += "\"min\":\"" + String(minT) + " (" + String(minH) + "%)\"";
   json_response += "}}";
   return json_response;
 }
@@ -358,7 +404,7 @@ String getMonthly(int currentYear, int currentMonth, int currentResolution )
     }
     firstEntry = false;
     res = 0;
-    File fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/VALUES.TXT");
+    File fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/TVALUES.TXT");
     if (fi) {
       float promV = 0;
       while (fi.available()) {
@@ -487,33 +533,36 @@ void registerData()
     int currentMonth = now.month();
     int currentDay = now.day();
     int currentYear = now.year();
-    if (currentYear > 1969) {
-      if (!SD.exists("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
-      {
-        SD.mkdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
-      }
-      fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
+
+    if (!SD.exists("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay)))
+    {
+      SD.mkdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+    }
+    float temperature = getDHTTemperature();
+    float humidity = getDHTHumidity();
+    if (!isnan(temperature) && !isnan(humidity)) {
+      fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/TVALUES.TXT", FILE_WRITE);
       if (fiReg) {
-
-        float temperature1 = getDHTTemperature();
-        if (!isnan(temperature1)) {
-          fiReg.println( String(temperature1) );
-          fiReg.close();
-
-          fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
-          if (fiReg) {
-            int  hh = now.hour();
-            int  mm = now.minute();
-            fiReg.println( (hh < 10 ? "0" + String(hh) : String(hh)) + ":" + (mm < 10 ? "0" + String(mm) : String(mm)) );
-            fiReg.close();
-            timerLoop = millis();
-          }
-        } else
-        {
-          delay(1000);
-        }
-
+        fiReg.println( String(temperature) );
+        fiReg.close();
       }
+      fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/HVALUES.TXT", FILE_WRITE);
+      if (fiReg) {
+        fiReg.println( String(humidity) );
+        fiReg.close();
+      }
+      fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
+      if (fiReg) {
+        int  hh = now.hour();
+        int  mm = now.minute();
+        fiReg.println( (hh < 10 ? "0" + String(hh) : String(hh)) + ":" + (mm < 10 ? "0" + String(mm) : String(mm)) );
+        fiReg.close();
+      }
+      timerLoop = millis();
+    }
+    else
+    {
+      delay(1000);
     }
   }
 }
@@ -687,8 +736,10 @@ void loop(void) {
   }
   if (((millis() - timerTempLoop) / 1000) > (15))
   {
-    getDHTTemperature() ;
+    getDHTTemperature();
+    getDHTHumidity();
     DBG_OUTPUT_PORT.println("Temp: " + String(currentTemp));
+    DBG_OUTPUT_PORT.println("Hum: " + String(currentHum));
     timerTempLoop = millis();
   }
   updateConfig();
