@@ -221,6 +221,10 @@ void temp_handler(AsyncWebServerRequest *request) {
   char * p = json_response;
   *p++ = '{';
   p += sprintf(p, "\"temp\":\"%.1f\",", currentTemp);
+  p += sprintf(p, "\"hum\":\"%.1f\",", currentHum);
+  p += sprintf(p, "\"devtemp\":\"%.1f\",", rtc.getTemperature());
+  p += sprintf(p, "\"rtclostpower\":%s,", (rtc.lostPower() ? "true" : "false") );
+  p += sprintf(p, "\"regenable\":%s,", (regEnable ? "true" : "false") );
   p += sprintf(p, "\"month\":%i,",  currentMonth);
   p += sprintf(p, "\"day\":%i,", currentDay);
   p += sprintf(p, "\"hour\":%i,", currentHour);
@@ -287,6 +291,13 @@ void reboot_handler(AsyncWebServerRequest * request) {
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
+void cmdreg_handler(AsyncWebServerRequest * request) {
+  regEnable = !regEnable;
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+
 String getDaily(int currentYear, int currentMonth, int currentDay, int currentResolution )
 {
   int res = 0;
@@ -653,11 +664,12 @@ void setup(void) {
     abort();
   }
   if (rtc.lostPower()) {
+    regEnable = false;
     //don't let register if clock is unset
     //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     // This line sets the RTC with an explicit date & time, for example to set
     // July 27, 2020 at 12am you would call:
-    rtc.adjust(DateTime(2020, 7, 27, 12, 0, 0));
+    //rtc.adjust(DateTime(2020, 1, 1, 12, 0, 0));
   }
 
   //dht.begin();
@@ -719,6 +731,8 @@ void setup(void) {
   server.on("/api/setConfig", HTTP_GET, setconfig_handler);
   server.on("/api/setRTCConfig", HTTP_GET, setrtcconfig_handler);
   server.on("/api/reboot", HTTP_GET, reboot_handler);
+  server.on("/api/initReg", HTTP_GET, cmdreg_handler);
+  server.on("/api/stopReg", HTTP_GET, cmdreg_handler);
 
   server.begin();
   DBG_OUTPUT_PORT.println("HTTP server started");

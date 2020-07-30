@@ -12,6 +12,9 @@ function Records_CLASS() {
         graphRendered: false,
         lineChart: null,
         registers: null,
+        cmdRegBtnInit: null,
+        cmdRegBtnStop: null,
+        messageDeployed: false,
         selectedReg: {
             year: 0,
             month: 0,
@@ -24,6 +27,35 @@ function Records_CLASS() {
         },
         init: function (chartElId) {
             var thiscomp = this;
+            this.cmdRegBtnInit = $('#cmdRegBtnInit');
+            this.cmdRegBtnStop = $('#cmdRegBtnStop');
+            this.cmdRegBtnInit.click(function () {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/initReg',
+                    processData: true,
+                    async: false,
+                    success: function (resp) {
+                        thiscomp.cmdRegBtnInit.fadeOut(2000);
+                        thiscomp.dismissMsg();
+                        thiscomp.message("Registro iniciado", false);
+                    }
+                });
+            });
+            this.cmdRegBtnStop.click(function () {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/stopReg',
+                    processData: true,
+                    async: false,
+                    success: function (resp) {
+                        thiscomp.cmdRegBtnStop.fadeOut(2000);
+                        thiscomp.dismissMsg();
+                    }
+                });
+            });
             this.chartEl = $('#' + chartElId);
             var sampleInp = $('#' + chartElId + 'Samples');
             sampleInp.change(function () {
@@ -238,6 +270,14 @@ function Records_CLASS() {
                     $('#' + dateElId).text((resp.day < 10 ? '0' + resp.day : resp.day) + '/' + (resp.month < 10 ? '0' + resp.month : resp.month));
                     $('#' + timeElMain).text((resp.hour < 10 ? '0' + resp.hour : resp.hour) + ':' + (resp.minute < 10 ? '0' + resp.minute : resp.minute));
                     $('#' + tempElId).text(resp.temp);
+                    if (resp.rtclostpower) {
+                        thiscomp.message("El reloj del sistema esta fuera de hora. registro detenido!", true);
+                    } else if (!resp.regenable) {
+                        thiscomp.cmdRegBtnInit.fadeIn(500);
+                        thiscomp.message("Registro detenido", true);
+                    } else {
+                        thiscomp.cmdRegBtnStop.fadeIn(500);
+                    }
                 }
             });
         },
@@ -245,6 +285,24 @@ function Records_CLASS() {
             var thiscomp = this;
             $('#' + minTempElId).text(thiscomp.stats.minTemp);
             $('#' + maxTempElId).text(thiscomp.stats.maxTemp);
+        },
+        message: function (textMsg, stay) {
+            var el = $('#msg');
+            el.children().text(textMsg);
+            if (!this.messageDeployed) {
+                if (stay) {
+                    this.messageDeployed = true;
+                    el.animate({ top: '+=60' });
+                } else {
+                    el.animate({ top: '+=60' }).delay(3000).animate({ top: '-=60' });
+                }
+            }
+        },
+        dismissMsg: function () {
+            if (this.messageDeployed) {
+                $('#msg').animate({ top: '-=60' });
+                this.messageDeployed = false;
+            }
         }
 
     }
