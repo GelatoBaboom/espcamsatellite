@@ -30,7 +30,7 @@ uint8_t DHTPin = D3;
 char* wifissid = "GelatoBaboom";
 char* wifipass = "friofrio";
 const char*  apssid = "FungoServer";
-char* appass = NULL;
+const char* appass = NULL;
 const char* host = "esp8266sd";
 uint32_t timerLoop;
 uint32_t timerTempLoop = 30 * 1000;
@@ -39,6 +39,7 @@ int regTime = 60 * 5;
 String filecont = "";
 bool configHasChanges = false;
 bool regEnable = true;
+bool rebootRequest = false;
 
 //DHT dht(DHTPin, DHTTYPE);
 DHTesp dht;
@@ -89,6 +90,19 @@ String getConfigsToJSON()
 }
 void configsjson_handler(AsyncWebServerRequest *request) {
   String json_response = getConfigsToJSON();
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+void rtcconfigsjson_handler(AsyncWebServerRequest *request) {
+  DateTime now = rtc.now();
+  String json_response = "[";
+
+  json_response += "{\"key\":\"inpdate\",\"value\":\"" + String(now.year()) + "-" +  String(now.month() < 10 ? "0" : "") + String(now.month()) + "-" +  String(now.day() < 10 ? "0" : "") + String(now.day())  +   "\"},";
+  json_response += "{\"key\":\"inphour\",\"value\":\"" + String(now.hour() < 10 ? "0" : "") + String(now.hour()) + "\"},";
+  json_response += "{\"key\":\"inpminute\",\"value\":\"" + String(now.minute() < 10 ? "0" : "") + String(now.minute()) + "\"}";
+  json_response += "]";
+
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json_response);
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
@@ -147,6 +161,39 @@ void setconfig_handler(AsyncWebServerRequest *request) {
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
+void setrtcconfig_handler(AsyncWebServerRequest *request) {
+  String k = "";
+  String v = "";
+  int params = request->params();
+  DateTime now = rtc.now();
+  for (int i = 0; i < params; i++) {
+    AsyncWebParameter* p = request->getParam(i);
+    if ((p->name()) == "k") {
+      k = (p->value());
+    }
+    if ((p->name()) == "v") {
+      v = (p->value());
+    }
+  }
+  DBG_OUTPUT_PORT.println("k: " + k + " v: " + v);
+  if (k == "inpdate")
+  {
+    rtc.adjust(DateTime(v.substring(0, 4).toInt(), v.substring(5, 7).toInt(), v.substring(8).toInt(), now.hour(), now.minute(), now.second()));
+  }
+  if (k == "inphour")
+  {
+    rtc.adjust(DateTime(now.year(), now.month(), now.day(), v.toInt(), now.minute() ));
+  }
+  if (k == "inpminute")
+  {
+    rtc.adjust(DateTime(now.year(), now.month(), now.day(), now.hour(), v.toInt() ));
+  }
+
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+
 void temp_handler(AsyncWebServerRequest *request) {
   DateTime now = rtc.now();
 
@@ -221,10 +268,11 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
   request->send(response);
 }
 void reboot_handler(AsyncWebServerRequest * request) {
-  while (configHasChanges)  {
-    delay(500);
-  }
-  ESP.restart();
+  DBG_OUTPUT_PORT.println("Restart request");
+  rebootRequest = true;
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
 }
 String getDaily(int currentYear, int currentMonth, int currentDay, int currentResolution )
 {
@@ -433,6 +481,7 @@ void monodevsvg_handler(AsyncWebServerRequest * request) {
 }
 void registerData()
 {
+  File fiReg;
   if (regEnable) {
     DateTime now = rtc.now();
     int currentMonth = now.month();
@@ -443,19 +492,20 @@ void registerData()
       {
         SD.mkdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
       }
-      fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
-      if (fi) {
+      fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/VALUES.TXT", FILE_WRITE);
+      if (fiReg) {
 
         float temperature1 = getDHTTemperature();
         if (!isnan(temperature1)) {
-          fi.println( String(temperature1) );
-          fi.close();
+          fiReg.println( String(temperature1) );
+          fiReg.close();
 
-          fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
-          if (fi) {
-
-            fi.println(now.toString("hh:mm "));
-            fi.close();
+          fiReg = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT", FILE_WRITE);
+          if (fiReg) {
+            int  hh = now.hour();
+            int  mm = now.minute();
+            fiReg.println( (hh < 10 ? "0" + String(hh) : String(hh)) + ":" + (mm < 10 ? "0" + String(mm) : String(mm)) );
+            fiReg.close();
             timerLoop = millis();
           }
         } else
@@ -467,7 +517,7 @@ void registerData()
     }
   }
 }
-const char* getConfigs(String key)
+String getConfigs(String key)
 {
   String k = "";
   String v = "";
@@ -478,17 +528,17 @@ const char* getConfigs(String key)
       k = fi.readStringUntil(',');
       v = fi.readStringUntil('\r');
       fi.readStringUntil('\n');
-      DBG_OUTPUT_PORT.println("Key:" + k);
       if (k == key)
       {
+        DBG_OUTPUT_PORT.println("Key:" + k + ", Val: '" + v + "'");
         fi.close();
-        if (v == "")return NULL;
-        return v.c_str();
+        //if (v == "")return NULL;
+        return v;
       }
     }
   }
   fi.close();
-  return NULL;
+  return "";
 
 }
 void updateConfig() {
@@ -503,6 +553,12 @@ void updateConfig() {
     fi.close();
     configHasChanges = false;
     //loadConfigs();
+  } else {
+    if (rebootRequest)
+    {
+      DBG_OUTPUT_PORT.println("Restart");
+      ESP.restart();
+    }
   }
 }
 
@@ -527,7 +583,10 @@ void setup(void) {
   //  WiFi.softAP("EspServer", NULL);
   WiFi.mode(WIFI_AP_STA );
   //WiFi.begin(getConfigs("wifissid"), getConfigs("wifipass"));
-  WiFi.begin(wifissid, wifipass);
+  String wifissidStr = getConfigs("wifissid");
+  String wifipassStr = getConfigs("wifipass");
+  WiFi.begin(wifissidStr.c_str(), (wifipassStr.length() == 0 ? NULL : wifipassStr.c_str() ));
+
   //quizas aca chequear....
   DBG_OUTPUT_PORT.print("Connecting to ");
   DBG_OUTPUT_PORT.println(wifissid);
@@ -557,7 +616,12 @@ void setup(void) {
   //checkSleepMode();
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
-  WiFi.softAP(apssid, appass);
+  //WiFi.softAP(apssid, appass);
+  String ssidStr = getConfigs("apssid");
+  String appassStr = getConfigs("appass");
+  WiFi.softAP(ssidStr.c_str(), ((appassStr.length() == 0) ? NULL : appassStr.c_str() ));
+
+  regTime =  getConfigs("regtime").toInt() * 60;
 
   dnsServer.start(53, "*", apIP);
 
@@ -602,7 +666,9 @@ void setup(void) {
   server.on("/api/getRegs", HTTP_GET, getRegisters_handler);
   server.on("/api/getTempJson", HTTP_GET, temph_handler);
   server.on("/api/getConfigsJson", HTTP_GET, configsjson_handler);
+  server.on("/api/getRTCConfigsJson", HTTP_GET, rtcconfigsjson_handler);
   server.on("/api/setConfig", HTTP_GET, setconfig_handler);
+  server.on("/api/setRTCConfig", HTTP_GET, setrtcconfig_handler);
   server.on("/api/reboot", HTTP_GET, reboot_handler);
 
   server.begin();
