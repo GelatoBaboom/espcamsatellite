@@ -21,7 +21,8 @@
 IPAddress apIP(192, 168, 4, 1);
 #define DBG_OUTPUT_PORT Serial
 #define CS_PIN  10
-#define HRELAY_PIN  D0
+#define TRELAY_PIN  D0
+#define HRELAY_PIN  3
 
 #define LEDPIN 2
 #define DHTTYPE DHT22
@@ -42,10 +43,12 @@ bool configHasChanges = false;
 bool regEnable = true;
 bool rebootRequest = false;
 
-//DHT dht(DHTPin, DHTTYPE);
+
 DHTesp dht;
 float currentTemp = -127;
+short tAdj = 0;
 float currentHum = 0;
+short hAdj = 0;
 
 DNSServer dnsServer;
 File fi;
@@ -66,7 +69,10 @@ float getDHTTemperature() {
     delay(300);
     cts--;
   } while (isnan(temp) && cts > 1);
-  if (!isnan(temp))currentTemp = temp;
+  if (!isnan(temp)) {
+    temp = temp + tAdj;
+    currentTemp = temp;
+  }
   return temp;
 }
 float getDHTHumidity() {
@@ -77,7 +83,10 @@ float getDHTHumidity() {
     delay(300);
     cts--;
   } while (isnan(hum) && cts > 1);
-  if (!isnan(hum))currentHum = hum;
+  if (!isnan(hum)) {
+    hum = hum + hAdj;
+    currentHum = hum;
+  }
   return hum;
 }
 String getConfigsToJSON()
@@ -634,7 +643,11 @@ void setup(void) {
 
   if (!SD.begin(CS_PIN)) {
     DBG_OUTPUT_PORT.println("initialization failed!");
-    //while (1) delay(500);
+    bool error = false;
+    while (1) {
+      digitalWrite(LEDPIN, (error = !error));
+      delay(80);
+    }
   }
   //  loadConfigs();
   //WiFi.mode(WIFI_STA);
@@ -685,6 +698,8 @@ void setup(void) {
   WiFi.softAP(ssidStr.c_str(), ((appassStr.length() == 0) ? NULL : appassStr.c_str() ));
 
   regTime =  getConfigs("regtime").toInt() * 60;
+  tAdj =  getConfigs("tadj").toInt();
+  hAdj =  getConfigs("hadj").toInt();
 
   dnsServer.start(53, "*", apIP);
 

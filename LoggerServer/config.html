@@ -113,7 +113,17 @@
                     <div class="form-group">
                         <label for="regtime">Tiempo de espera</label>
                         <input type="number" class="form-control" id="regtime" aria-describedby="regtimeHelp" placeholder="Tiempo en minutos">
-                        <small id="regtimeHelp" class="form-text text-muted">Fecha formato </small>
+                        <small id="regtimeHelp" class="form-text text-muted">Tiempo de espera entre cada registro</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="tadj">Calibración temperatura</label>
+                        <input type="number" class="form-control" id="tadj" aria-describedby="tadjHelp" placeholder="Ajuste en decima de grados" step="0.1">
+                        <small id="regtimeHelp" class="form-text text-muted">Ajuste positivo o negativo del sensor de temperatura</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="hadj">Calibración humedad</label>
+                        <input type="number" class="form-control" id="hadj" aria-describedby="hadjHelp" placeholder="Ajuste en decima de grados" step="0.1">
+                        <small id="hadjHelp" class="form-text text-muted">Ajuste positivo o negativo del sensor de humedad</small>
                     </div>
                 </div>
                 <div class="col-md-3">
