@@ -2,16 +2,11 @@
 #include <WiFiClient.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <time.h>
 #include <RTClib.h>
-//#include <DHT.h>
 #include <DHTesp.h>
 
-
-//#include <ESP8266WebServer.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
-//#include <ESP8266mDNS.h>
 #include <DNSServer.h>
 
 #include <SPI.h>
@@ -54,7 +49,6 @@ DNSServer dnsServer;
 File fi;
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 RTC_DS3231 rtc;
 
