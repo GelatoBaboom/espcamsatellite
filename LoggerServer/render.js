@@ -23,7 +23,9 @@ function Records_CLASS() {
         },
         stats: {
             maxTemp: 0,
-            minTemp: 0
+            minTemp: 0,
+            maxHum: 0,
+            minHum: 0
         },
         init: function (chartElId) {
             var thiscomp = this;
@@ -35,7 +37,7 @@ function Records_CLASS() {
                     dataType: "json",
                     url: '/api/initReg',
                     processData: true,
-                    async: false,
+                    async: true,
                     success: function (resp) {
                         thiscomp.cmdRegBtnInit.fadeOut(2000);
                         thiscomp.dismissMsg();
@@ -49,7 +51,7 @@ function Records_CLASS() {
                     dataType: "json",
                     url: '/api/stopReg',
                     processData: true,
-                    async: false,
+                    async: true,
                     success: function (resp) {
                         thiscomp.cmdRegBtnStop.fadeOut(2000);
                         thiscomp.dismissMsg();
@@ -156,15 +158,17 @@ function Records_CLASS() {
                         s: thiscomp.selectedReg.samples
                     },
                     processData: true,
-                    async: false,
+                    async: true,
                     success: function (resp) {
                         if (!thiscomp.graphRendered) {
                             thiscomp.render(resp);
                         } else {
                             thiscomp.updateChart(resp);
                         }
-                        thiscomp.stats.maxTemp = resp.stats.max;
-                        thiscomp.stats.minTemp = resp.stats.min;
+                        thiscomp.stats.maxTemp = resp.stats.maxt;
+                        thiscomp.stats.minTemp = resp.stats.mint;
+                        thiscomp.stats.maxHum = resp.stats.maxh;
+                        thiscomp.stats.minHum = resp.stats.minh;
                     }
                 });
 
@@ -209,8 +213,10 @@ function Records_CLASS() {
                                     thiscomp.selectedReg.year = yvalue.year;
                                     thiscomp.selectedReg.month = mvalue.month;
                                     thiscomp.selectedReg.day = dvalue;
+                                    thiscomp.loadRegsBase();
                                     thiscomp.renderRegList();
                                     thiscomp.renderTempGraph();
+                                    thiscomp.setStats('min', 'max');
                                 });
                                 dCont.append(dEl);
                             });
@@ -223,6 +229,7 @@ function Records_CLASS() {
                         mEl.click(function () {
                             thiscomp.selectedReg.month = mvalue.month;
                             thiscomp.selectedReg.day = 0;
+                            thiscomp.loadRegsBase();
                             thiscomp.renderRegList();
                             thiscomp.renderTempGraph();
                         });
@@ -235,6 +242,7 @@ function Records_CLASS() {
                     });
                 }
                 yEl.click(function () {
+                    thiscomp.loadRegsBase();
                     thiscomp.selectedReg.year = yvalue.year;
                     thiscomp.selectedReg.month = yvalue.months[yvalue.months.length - 1].month;
                     thiscomp.selectedReg.day = yvalue.months[yvalue.months.length - 1].days[yvalue.months[yvalue.months.length - 1].days.length - 1];
@@ -257,19 +265,35 @@ function Records_CLASS() {
                 }
             });
         },
-        setDateTempNow: function (dateElId, timeElMain, tempElId) {
+        setDateTempNow: function (dateElId, timeElMain, tempElId, mainHumEl, tempDevEl, humInitedEl, calInitedEl) {
             var thiscomp = this;
             $.ajax({
                 type: 'GET',
                 dataType: "json",
                 url: '/api/temp',
                 processData: true,
-                async: false,
+                async: true,
                 success: function (resp) {
                     resp.registers;
                     $('#' + dateElId).text((resp.day < 10 ? '0' + resp.day : resp.day) + '/' + (resp.month < 10 ? '0' + resp.month : resp.month));
                     $('#' + timeElMain).text((resp.hour < 10 ? '0' + resp.hour : resp.hour) + ':' + (resp.minute < 10 ? '0' + resp.minute : resp.minute));
                     $('#' + tempElId).text(resp.temp);
+                    $('#' + tempDevEl).text(resp.devtemp);
+                    $('#' + mainHumEl).text(resp.hum);
+                    //dispositivos
+                    var hInEL = $('#' + humInitedEl)
+                    var cInEL = $('#' + calInitedEl)
+                    if (resp.huminited) {
+                        hInEL.fadeIn(500);
+                    } else {
+                        hInEL.fadeOut(500);
+                    }
+                    if (resp.calinited) {
+                        cInEL.fadeIn(500);
+                    } else {
+                        cInEL.fadeOut(500);
+                    }
+
                     if (resp.rtclostpower) {
                         thiscomp.message("El reloj del sistema esta fuera de hora. registro detenido!", true);
                     } else if (!resp.regenable) {
@@ -283,8 +307,8 @@ function Records_CLASS() {
         },
         setStats: function (minTempElId, maxTempElId) {
             var thiscomp = this;
-            $('#' + minTempElId).text(thiscomp.stats.minTemp);
-            $('#' + maxTempElId).text(thiscomp.stats.maxTemp);
+            $('#' + minTempElId).text(thiscomp.stats.minTemp + '/' + thiscomp.stats.minHum + '%');
+            $('#' + maxTempElId).text(thiscomp.stats.maxTemp + '/' + thiscomp.stats.maxHum + '%');
         },
         message: function (textMsg, stay) {
             var el = $('#msg');
@@ -303,8 +327,30 @@ function Records_CLASS() {
                 $('#msg').animate({ top: '-=60' });
                 this.messageDeployed = false;
             }
+        },
+        deleteReg: function () {
+            var thiscomp = this;
+            if (confirm('queres eliminar este registro?')) {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/delReg',
+                    processData: true,
+                    data: {
+                        y: thiscomp.selectedReg.year,
+                        m: thiscomp.selectedReg.month,
+                        d: thiscomp.selectedReg.day
+                    },
+                    async: true,
+                    success: function (resp) {
+                        if(resp.res)
+                        thiscomp.message('Registro eliminado', false);
+                        thiscomp.loadRegsBase();
+                        thiscomp.renderRegList();
+                    }
+                });
+            }
         }
-
     }
 }
 $(document).ready(function () {
@@ -320,13 +366,17 @@ $(document).ready(function () {
     r.selectedReg.day = r.registers[yIdx].months[mIdx].days[dIdx];
     r.renderRegList();
     r.renderTempGraph();
+    $('#deleteregday').click(function () {
+        r.deleteReg();
+    });
+
 
     var interval = setInterval(function () {
         r.renderTempGraph();
-        r.setStats('minT', 'maxT');
+        r.setStats('min', 'max');
     }, 10000);
-    r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
+    r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
     var interval = setInterval(function () {
-        r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
+        r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
     }, 30000);
 });
