@@ -19,7 +19,7 @@ IPAddress apIP(192, 168, 4, 1);
 #define TRELAY_PIN  D0
 #define HRELAY_PIN  3
 
-#define LEDPIN 2
+#define LEDPIN D4
 #define DHTTYPE DHT22
 
 uint8_t DHTPin = D3;
@@ -29,6 +29,7 @@ char* wifipass = "friofrio";
 const char*  apssid = "FungoServer";
 const char* appass = NULL;
 const char* host = "esp8266sd";
+uint32_t timerLedLoop;
 uint32_t timerLoop;
 uint32_t timerTempLoop = 30 * 1000;
 
@@ -37,6 +38,7 @@ String filecont = "";
 bool configHasChanges = false;
 bool regEnable = true;
 bool rebootRequest = false;
+bool ledStatus = false;
 
 
 DHTesp dht;
@@ -44,6 +46,10 @@ float currentTemp = -127;
 short tAdj = 0;
 float currentHum = 0;
 short hAdj = 0;
+int bottomThresholdT = 0;
+int topThresholdT = 0;
+int bottomThresholdH = 0;
+int topThresholdH = 0;
 
 DNSServer dnsServer;
 File fi;
@@ -625,9 +631,29 @@ void updateConfig() {
     }
   }
 }
+void checkThresholds()
+{
+  if (currentTemp < bottomThresholdT )
+  {
+    digitalWrite(TRELAY_PIN, LOW);
+  }
+  if (currentTemp > topThresholdT ) {
+    digitalWrite(TRELAY_PIN, HIGH);
+  }
+  if ( currentHum < bottomThresholdH ) {
+    digitalWrite(HRELAY_PIN, LOW);
+  }
+  if ( currentHum > topThresholdH ) {
+    digitalWrite(HRELAY_PIN, HIGH);
+  }
+
+}
+
 
 void setup(void) {
   pinMode(LEDPIN, OUTPUT);
+  pinMode(HRELAY_PIN, OUTPUT);
+  pinMode(TRELAY_PIN, OUTPUT);
   //digitalWrite(LEDPIN, HIGH);
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
@@ -694,6 +720,11 @@ void setup(void) {
   regTime =  getConfigs("regtime").toInt() * 60;
   tAdj =  getConfigs("tadj").toInt();
   hAdj =  getConfigs("hadj").toInt();
+
+  bottomThresholdT = getConfigs("bottomthresholdt").toInt();
+  topThresholdT = getConfigs("topthresholdt").toInt();
+  bottomThresholdH = getConfigs("bottomthresholdh").toInt();
+  topThresholdH = getConfigs("topthresholdh").toInt();
 
   dnsServer.start(53, "*", apIP);
 
@@ -763,10 +794,16 @@ void loop(void) {
   {
     getDHTTemperature();
     getDHTHumidity();
+    checkThresholds();
     DBG_OUTPUT_PORT.println("Temp: " + String(currentTemp));
     DBG_OUTPUT_PORT.println("Hum: " + String(currentHum));
     timerTempLoop = millis();
-    digitalWrite(HRELAY_PIN, !regEnable);
+
+  }
+  if (((millis() - timerLedLoop) ) > 1000)
+  {
+    digitalWrite(LEDPIN, ledStatus = !ledStatus);
+    timerLedLoop = millis();
   }
   updateConfig();
 
