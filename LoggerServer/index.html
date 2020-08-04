@@ -49,6 +49,10 @@
                 float: left !important;
                 top: -80px !important;
             }
+
+            .btn-regs {
+                margin-bottom: 10px;
+            }
         }
 
         .alert {
@@ -126,7 +130,7 @@
         </button>
 
     </nav>
-    <div id="msg" style="width: 100%;position: fixed;top: -5px;margin-left: -15px;z-index: 1;">
+    <div id="msg" style="width: 100%;position: fixed;top: -5px;z-index: 1;">
         <div style="margin: 0 auto;width: 300px;padding: 5px;text-align: center;border-radius: 4px;background-color: #d34141;color:#fff;">msg</div>
     </div>
 
@@ -170,7 +174,8 @@
                     <p>
                         La temperatura/humedad minima fue: <b id="min"></b><br />y la maxima: <b id="max"></b>
                     </p>
-                    <button id="deleteregday" type="button" class="btn btn-secondary">Eliminar registro seleccionado</button>
+                    <button id="deleteregday" type="button" class="btn btn-secondary btn-regs">Eliminar registro seleccionado</button>
+                    <button id="downloadregday" type="button" class="btn btn-success btn-regs">Descargar registro seleccionado</button>
                 </div>
 
             </div>

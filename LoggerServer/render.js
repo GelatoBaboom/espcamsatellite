@@ -39,7 +39,7 @@ function Records_CLASS() {
                     processData: true,
                     async: true,
                     success: function (resp) {
-                        thiscomp.cmdRegBtnInit.fadeOut(2000);
+                        thiscomp.cmdRegBtnInit.fadeOut(1000);
                         thiscomp.dismissMsg();
                         thiscomp.message("Registro iniciado", false);
                     }
@@ -53,7 +53,7 @@ function Records_CLASS() {
                     processData: true,
                     async: true,
                     success: function (resp) {
-                        thiscomp.cmdRegBtnStop.fadeOut(2000);
+                        thiscomp.cmdRegBtnStop.fadeOut(1000);
                         thiscomp.dismissMsg();
                     }
                 });
@@ -174,6 +174,80 @@ function Records_CLASS() {
 
             }
         },
+        downloadRegs: function () {
+            var thiscomp = this;
+            if (thiscomp.selectedReg.day != 0) {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/getTempJson',
+                    data: {
+                        y: thiscomp.selectedReg.year,
+                        m: thiscomp.selectedReg.month,
+                        d: thiscomp.selectedReg.day,
+                        s: thiscomp.selectedReg.samples
+                    },
+                    processData: true,
+                    async: true,
+                    success: function (resp) {
+                        var csv = 'hora,temperatura,humedad\r\n';
+                        for (var i = 0; i < resp.labels.length; i++) {
+                            csv += resp.labels[i] + ',' + resp.tvalues[i] + ',' + resp.hvalues[i] + '\r\n';
+                        }
+                        thiscomp.makeFile('Registro_' + thiscomp.selectedReg.year + thiscomp.selectedReg.month + thiscomp.selectedReg.day + '.csv', csv);
+                    }
+                });
+            } else {
+                thiscomp.loadRegsBase();
+                var csv = 'fecha,temperatura,humedad\r\n';
+                for (var i = 0; i < thiscomp.registers.length; i++) {
+                    if (thiscomp.registers[i].year == thiscomp.selectedReg.year) {
+                        for (var j = 0; j < thiscomp.registers[i].months.length; j++) {
+                            if (thiscomp.registers[i].months[j].month == thiscomp.selectedReg.month) {
+                                for (var k = 0; k < thiscomp.registers[i].months[j].days.length; k++) {
+                                    var day = thiscomp.registers[i].months[j].days[k];
+                                    $.ajax({
+                                        type: 'GET',
+                                        dataType: "json",
+                                        url: '/api/getTempJson',
+                                        data: {
+                                            y: thiscomp.selectedReg.year,
+                                            m: thiscomp.selectedReg.month,
+                                            d: day,
+                                            s: thiscomp.selectedReg.samples
+                                        },
+                                        processData: true,
+                                        async: false,
+                                        success: function (resp) {
+                                            for (var i = 0; i < resp.labels.length; i++) {
+                                                csv += (day + '/' + thiscomp.selectedReg.month) + '-' + resp.labels[i] + ',' + resp.tvalues[i] + ',' + resp.hvalues[i] + '\r\n';
+                                            }
+
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                thiscomp.makeFile('Registro_' + thiscomp.selectedReg.year + thiscomp.selectedReg.month + '.csv', csv);
+            }
+
+        },
+        makeFile: function (filename, data) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+
+        }
+        ,
         renderRegList: function () {
             var thiscomp = this;
             var yCont = $('#yCont');
@@ -343,8 +417,8 @@ function Records_CLASS() {
                     },
                     async: true,
                     success: function (resp) {
-                        if(resp.res)
-                        thiscomp.message('Registro eliminado', false);
+                        if (resp.result)
+                            thiscomp.message('Registro eliminado', false);
                         thiscomp.loadRegsBase();
                         thiscomp.renderRegList();
                     }
@@ -356,7 +430,6 @@ function Records_CLASS() {
 $(document).ready(function () {
     var r = new Records('tempChart');
     r.loadRegsBase();
-    console.log(r);
     var yIdx = r.registers.length - 1;
     var mIdx = r.registers[yIdx].months.length - 1;
     var dIdx = r.registers[yIdx].months[mIdx].days.length - 1;
@@ -369,6 +442,9 @@ $(document).ready(function () {
     $('#deleteregday').click(function () {
         r.deleteReg();
     });
+    $('#downloadregday').click(function () {
+        r.downloadRegs();
+    });
 
 
     var interval = setInterval(function () {
@@ -378,5 +454,5 @@ $(document).ready(function () {
     r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
     var interval = setInterval(function () {
         r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
-    }, 30000);
+    }, 5000);
 });

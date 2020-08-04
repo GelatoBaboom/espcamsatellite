@@ -133,7 +133,7 @@ void rtcconfigsjson_handler(AsyncWebServerRequest *request) {
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
-void setConfigs(String key, String val)
+bool setConfigs(String key, String val)
 {
   if (!configHasChanges) {
     filecont = "";
@@ -165,7 +165,9 @@ void setConfigs(String key, String val)
       DBG_OUTPUT_PORT.println("file closed");
       configHasChanges = true;
     }
+    return true;
   }
+  return false;
 
 }
 void setconfig_handler(AsyncWebServerRequest *request) {
@@ -181,9 +183,9 @@ void setconfig_handler(AsyncWebServerRequest *request) {
       v = (p->value());
     }
   }
-  setConfigs(k, v);
+  bool done = setConfigs(k, v);
 
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":" + String(done ? "true" : "false") + "}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -215,7 +217,7 @@ void setrtcconfig_handler(AsyncWebServerRequest *request) {
     rtc.adjust(DateTime(now.year(), now.month(), now.day(), now.hour(), v.toInt() ));
   }
 
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":true}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":true}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -302,13 +304,13 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
 void reboot_handler(AsyncWebServerRequest * request) {
   DBG_OUTPUT_PORT.println("Restart request");
   rebootRequest = true;
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":true}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":true}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
 void cmdreg_handler(AsyncWebServerRequest * request) {
   regEnable = !regEnable;
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":true}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":true}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -337,7 +339,7 @@ void cmdregdel_handler(AsyncWebServerRequest * request) {
     SD.remove("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/HVALUES.TXT");
     bool removed = SD.rmdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
   }
-  String json = "{\"resp\":" + String(removed ? "true" : "false") + "}";
+  String json = "{\"result\":" + String(removed ? "true" : "false") + "}";
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json);
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
@@ -602,8 +604,8 @@ void monodevsvg_handler(AsyncWebServerRequest * request) {
 }
 void registerData()
 {
-  File fiReg;
   if (regEnable) {
+    File fiReg;
     DateTime now = rtc.now();
     int currentMonth = now.month();
     int currentDay = now.day();
@@ -668,13 +670,14 @@ String getConfigs(String key)
 void updateConfig() {
   if (configHasChanges)
   {
+    File fiC;
     SD.remove("/configs/configs.ini");
     DBG_OUTPUT_PORT.println("file deleted");
-    fi = SD.open("/configs/configs.ini", FILE_WRITE);
+    fiC = SD.open("/configs/configs.ini", FILE_WRITE);
     DBG_OUTPUT_PORT.println("data: \r\n" + filecont);
-    fi.print(filecont);
+    fiC.print(filecont);
     DBG_OUTPUT_PORT.println("file printed again");
-    fi.close();
+    fiC.close();
     configHasChanges = false;
     //loadConfigs();
   } else {
@@ -687,24 +690,32 @@ void updateConfig() {
 }
 void checkThresholds()
 {
-  if (currentTemp < bottomThresholdT )
-  {
-    digitalWrite(TRELAY_PIN, LOW);
-    calInited = true;
+  if (regEnable) {
+    if (currentTemp < bottomThresholdT )
+    {
+      digitalWrite(TRELAY_PIN, LOW);
+      calInited = true;
+    }
+    if (currentTemp > topThresholdT ) {
+      digitalWrite(TRELAY_PIN, HIGH);
+      calInited = false;
+    }
+    if ( currentHum < bottomThresholdH ) {
+      digitalWrite(HRELAY_PIN, LOW);
+      humInited = true;
+    }
+    if ( currentHum > topThresholdH ) {
+      digitalWrite(HRELAY_PIN, HIGH);
+      humInited = false;
+    }
   }
-  if (currentTemp > topThresholdT ) {
+  else
+  {
     digitalWrite(TRELAY_PIN, HIGH);
     calInited = false;
-  }
-  if ( currentHum < bottomThresholdH ) {
-    digitalWrite(HRELAY_PIN, LOW);
-    humInited = true;
-  }
-  if ( currentHum > topThresholdH ) {
     digitalWrite(HRELAY_PIN, HIGH);
     humInited = false;
   }
-
 }
 
 
@@ -712,6 +723,8 @@ void setup(void) {
   pinMode(LEDPIN, OUTPUT);
   pinMode(HRELAY_PIN, OUTPUT);
   pinMode(TRELAY_PIN, OUTPUT);
+  digitalWrite(HRELAY_PIN, HIGH);
+  digitalWrite(TRELAY_PIN, HIGH);
   //digitalWrite(LEDPIN, HIGH);
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
@@ -848,7 +861,7 @@ void loop(void) {
     DBG_OUTPUT_PORT.println("Register data");
     registerData();
   }
-  if (((millis() - timerTempLoop) / 1000) > (15))
+  if (((millis() - timerTempLoop) / 1000) > (10))
   {
     getDHTTemperature();
     getDHTHumidity();

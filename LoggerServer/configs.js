@@ -63,6 +63,7 @@ function Configs_CLASS() {
         },
         updateField: function (key, value) {
             var thiscomp = this;
+            $('#' + thiscomp.btnResetEl).prop('disabled', true);
             $.ajax({
                 type: 'GET',
                 dataType: "json",
@@ -71,7 +72,13 @@ function Configs_CLASS() {
                 data: { k: key, v: value },
                 async: true,
                 success: function (resp) {
-                    thiscomp.message("Cambios guardados");
+                    if (resp.result) {
+                        thiscomp.message("Cambios guardados");
+                        $('#' + thiscomp.btnResetEl).prop('disabled', false);
+                    }
+                    else {
+                        setTimeout(function () { thiscomp.updateField(key, value); }, 2000);
+                    }
                 }
             });
         },
@@ -102,5 +109,5 @@ function Configs_CLASS() {
 }
 $(document).ready(function () {
     var cfg = new Configs();
-    
+
 });
