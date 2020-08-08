@@ -73,7 +73,7 @@ function Records_CLASS() {
             stacked: false,
             title: {
                 display: true,
-                text: 'Grafico de temperatura y humedad'
+                text: ''
             },
             scales: {
                 yAxes: [{
@@ -86,7 +86,10 @@ function Records_CLASS() {
                         steps: 10,
                         stepValue: 5,
                         max: 70
-                    }
+                    },
+					gridLines :{
+						lineWidth:0
+					}
                 },
                 {
                     type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
@@ -98,7 +101,10 @@ function Records_CLASS() {
                         steps: 10,
                         stepValue: 5,
                         max: 100
-                    }
+                    },
+					gridLines :{
+						lineWidth:0
+					}
                 }
                 ],
             }

@@ -28,7 +28,7 @@ char* wifissid = "GelatoBaboom";
 char* wifipass = "friofrio";
 const char*  apssid = "FungoServer";
 const char* appass = NULL;
-const char* host = "esp8266sd";
+const char* host = "fungoserver";
 uint32_t timerLedLoop;
 uint32_t timerLoop;
 uint32_t timerTempLoop = 30 * 1000;
@@ -873,7 +873,7 @@ void loop(void) {
   }
   if (((millis() - timerLedLoop) ) > 1000)
   {
-    digitalWrite(LEDPIN, ledStatus = !ledStatus);
+    digitalWrite(LEDPIN, ledStatus = (regEnable ? !ledStatus: !regEnable));
     timerLedLoop = millis();
   }
   updateConfig();
