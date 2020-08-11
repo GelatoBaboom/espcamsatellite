@@ -24,8 +24,8 @@ IPAddress apIP(192, 168, 4, 1);
 
 uint8_t DHTPin = D3;
 
-char* wifissid = "GelatoBaboom";
-char* wifipass = "friofrio";
+char* wifissid = "";
+char* wifipass = "";
 const char*  apssid = "FungoServer";
 const char* appass = NULL;
 const char* host = "fungoserver";
@@ -751,8 +751,11 @@ void setup(void) {
   //WiFi.begin(getConfigs("wifissid"), getConfigs("wifipass"));
   String wifissidStr = getConfigs("wifissid");
   String wifipassStr = getConfigs("wifipass");
-  if (wifissidStr.length() == 0) {
+  if (wifissidStr.length() > 0) {
     WiFi.begin(wifissidStr.c_str(), (wifipassStr.length() == 0 ? NULL : wifipassStr.c_str() ));
+  } else
+  {
+    WiFi.mode(WIFI_AP);
   }
   //quizas aca chequear....
   DBG_OUTPUT_PORT.print("Connecting to ");
