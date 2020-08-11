@@ -19,7 +19,7 @@ IPAddress apIP(192, 168, 4, 1);
 #define TRELAY_PIN  D0
 #define HRELAY_PIN  3
 
-#define LEDPIN 2
+#define LEDPIN D4
 #define DHTTYPE DHT22
 
 uint8_t DHTPin = D3;
@@ -28,7 +28,8 @@ char* wifissid = "GelatoBaboom";
 char* wifipass = "friofrio";
 const char*  apssid = "FungoServer";
 const char* appass = NULL;
-const char* host = "esp8266sd";
+const char* host = "fungoserver";
+uint32_t timerLedLoop;
 uint32_t timerLoop;
 uint32_t timerTempLoop = 30 * 1000;
 
@@ -37,6 +38,10 @@ String filecont = "";
 bool configHasChanges = false;
 bool regEnable = true;
 bool rebootRequest = false;
+bool ledStatus = false;
+
+bool humInited = false;
+bool calInited = false;
 
 
 DHTesp dht;
@@ -44,6 +49,10 @@ float currentTemp = -127;
 short tAdj = 0;
 float currentHum = 0;
 short hAdj = 0;
+int bottomThresholdT = 0;
+int topThresholdT = 0;
+int bottomThresholdH = 0;
+int topThresholdH = 0;
 
 DNSServer dnsServer;
 File fi;
@@ -124,7 +133,7 @@ void rtcconfigsjson_handler(AsyncWebServerRequest *request) {
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
-void setConfigs(String key, String val)
+bool setConfigs(String key, String val)
 {
   if (!configHasChanges) {
     filecont = "";
@@ -156,7 +165,9 @@ void setConfigs(String key, String val)
       DBG_OUTPUT_PORT.println("file closed");
       configHasChanges = true;
     }
+    return true;
   }
+  return false;
 
 }
 void setconfig_handler(AsyncWebServerRequest *request) {
@@ -172,9 +183,9 @@ void setconfig_handler(AsyncWebServerRequest *request) {
       v = (p->value());
     }
   }
-  setConfigs(k, v);
+  bool done = setConfigs(k, v);
 
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":" + String(done ? "true" : "false") + "}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -206,7 +217,7 @@ void setrtcconfig_handler(AsyncWebServerRequest *request) {
     rtc.adjust(DateTime(now.year(), now.month(), now.day(), now.hour(), v.toInt() ));
   }
 
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":true}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -229,6 +240,8 @@ void temp_handler(AsyncWebServerRequest *request) {
   p += sprintf(p, "\"devtemp\":\"%.1f\",", rtc.getTemperature());
   p += sprintf(p, "\"rtclostpower\":%s,", (rtc.lostPower() ? "true" : "false") );
   p += sprintf(p, "\"regenable\":%s,", (regEnable ? "true" : "false") );
+  p += sprintf(p, "\"huminited\":%s,", (humInited ? "true" : "false") );
+  p += sprintf(p, "\"calinited\":%s,", (calInited ? "true" : "false") );
   p += sprintf(p, "\"month\":%i,",  currentMonth);
   p += sprintf(p, "\"day\":%i,", currentDay);
   p += sprintf(p, "\"hour\":%i,", currentHour);
@@ -291,13 +304,43 @@ void getRegisters_handler(AsyncWebServerRequest * request) {
 void reboot_handler(AsyncWebServerRequest * request) {
   DBG_OUTPUT_PORT.println("Restart request");
   rebootRequest = true;
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":true}");
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
 void cmdreg_handler(AsyncWebServerRequest * request) {
   regEnable = !regEnable;
-  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"resp\":\"ok\"}");
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"result\":true}");
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+void cmdregdel_handler(AsyncWebServerRequest * request) {
+  int currentYear = 0;
+  int currentMonth = 0;
+  int currentDay = 0;
+  int params = request->params();
+  DBG_OUTPUT_PORT.println("Param count: " + String(params));
+  for (int i = 0; i < params; i++) {
+    AsyncWebParameter* p = request->getParam(i);
+    if ((p->name()) == "y") {
+      currentYear = (p->value()).toInt();
+    }
+    if ((p->name()) == "m") {
+      currentMonth = (p->value()).toInt();
+    }
+    if ((p->name()) == "d") {
+      currentDay = (p->value()).toInt();
+    }
+  }
+  bool removed = false;
+  if (currentDay != 0) {
+    SD.remove("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/LABELS.TXT");
+    SD.remove("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/TVALUES.TXT");
+    SD.remove("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay) + "/HVALUES.TXT");
+    bool removed = SD.rmdir("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
+  }
+  String json = "{\"result\":" + String(removed ? "true" : "false") + "}";
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json);
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
 }
@@ -393,19 +436,23 @@ String getDaily(int currentYear, int currentMonth, int currentDay, int currentRe
 
   }
   json_response += "\"stats\":{";
-  json_response += "\"max\":\"" + String(maxT) + "c (" + String(maxH) + "%)\",";
-  json_response += "\"min\":\"" + String(minT) + "c (" + String(minH) + "%)\"";
+  json_response += "\"maxt\":\"" + String(maxT) + "\",";
+  json_response += "\"mint\":\"" + String(minT) + "\",";
+  json_response += "\"maxh\":\"" + String(maxH) + "\",";
+  json_response += "\"minh\":\"" + String(minH) + "\"";
   json_response += "}}";
   return json_response;
 }
 String getMonthly(int currentYear, int currentMonth, int currentResolution )
 {
   int res = 0;
-  String json_response;
+  String tjson_response;
+  String hjson_response;
   String monthsLabels ;
   //DBG_OUTPUT_PORT.println("year: " + String(currentYear) + "/" + String(currentMonth) + "/" + String(currentDay));
   File dir = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) );
-  json_response = "{\"values\":[";
+  tjson_response = "\"tvalues\":[";
+  hjson_response = "\"hvalues\":[";
   bool firstEntry = true;
   while (true) {
     File entry =  dir.openNextFile();
@@ -413,13 +460,15 @@ String getMonthly(int currentYear, int currentMonth, int currentResolution )
       break;
     }
     if (!firstEntry) {
-      json_response += ",";
+      tjson_response += ",";
+      hjson_response += ",";
       monthsLabels += + ",";
 
     }
     firstEntry = false;
     res = 0;
-    File fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/TVALUES.TXT");
+    //temperatura
+    fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/TVALUES.TXT");
     if (fi) {
       float promV = 0;
       while (fi.available()) {
@@ -428,21 +477,34 @@ String getMonthly(int currentYear, int currentMonth, int currentResolution )
         promV = promV + v.toFloat();
         res++;
       }
-      json_response += String(promV / res) ;
-
-      monthsLabels += "\"" ;
-      monthsLabels += + entry.name();
-      monthsLabels += + "\"";
+      tjson_response += String(promV / res) ;
     }
     fi.close();
+    //humedad
+    fi = SD.open("/regs/" + String(currentYear) + "/" + String(currentMonth) + "/" + entry.name() + "/HVALUES.TXT");
+    if (fi) {
+      float promV = 0;
+      while (fi.available()) {
+        String v = fi.readStringUntil('\r');
+        fi.readStringUntil('\n');
+        promV = promV + v.toFloat();
+        res++;
+      }
+      hjson_response += String(promV / res) ;
 
+
+    }
+    fi.close();
+    monthsLabels += "\"" ;
+    monthsLabels += + entry.name();
+    monthsLabels += + "\"";
     entry.close();
   }
-  json_response += "]";
-  json_response += ",\"labels\":[";
-  json_response += monthsLabels;
-  json_response += "]}";
-  return json_response;
+  tjson_response += "]";
+  hjson_response += "]";
+  monthsLabels = "\"labels\":[" + monthsLabels + "]";
+
+  return "{" + tjson_response + "," + hjson_response + "," + monthsLabels + "}" ;
 }
 void temph_handler(AsyncWebServerRequest *request) {
   int currentYear = 0;
@@ -542,8 +604,8 @@ void monodevsvg_handler(AsyncWebServerRequest * request) {
 }
 void registerData()
 {
-  File fiReg;
   if (regEnable) {
+    File fiReg;
     DateTime now = rtc.now();
     int currentMonth = now.month();
     int currentDay = now.day();
@@ -608,13 +670,14 @@ String getConfigs(String key)
 void updateConfig() {
   if (configHasChanges)
   {
+    File fiC;
     SD.remove("/configs/configs.ini");
     DBG_OUTPUT_PORT.println("file deleted");
-    fi = SD.open("/configs/configs.ini", FILE_WRITE);
+    fiC = SD.open("/configs/configs.ini", FILE_WRITE);
     DBG_OUTPUT_PORT.println("data: \r\n" + filecont);
-    fi.print(filecont);
+    fiC.print(filecont);
     DBG_OUTPUT_PORT.println("file printed again");
-    fi.close();
+    fiC.close();
     configHasChanges = false;
     //loadConfigs();
   } else {
@@ -625,9 +688,43 @@ void updateConfig() {
     }
   }
 }
+void checkThresholds()
+{
+  if (regEnable) {
+    if (currentTemp < bottomThresholdT )
+    {
+      digitalWrite(TRELAY_PIN, LOW);
+      calInited = true;
+    }
+    if (currentTemp > topThresholdT ) {
+      digitalWrite(TRELAY_PIN, HIGH);
+      calInited = false;
+    }
+    if ( currentHum < bottomThresholdH ) {
+      digitalWrite(HRELAY_PIN, LOW);
+      humInited = true;
+    }
+    if ( currentHum > topThresholdH ) {
+      digitalWrite(HRELAY_PIN, HIGH);
+      humInited = false;
+    }
+  }
+  else
+  {
+    digitalWrite(TRELAY_PIN, HIGH);
+    calInited = false;
+    digitalWrite(HRELAY_PIN, HIGH);
+    humInited = false;
+  }
+}
+
 
 void setup(void) {
   pinMode(LEDPIN, OUTPUT);
+  pinMode(HRELAY_PIN, OUTPUT);
+  pinMode(TRELAY_PIN, OUTPUT);
+  digitalWrite(HRELAY_PIN, HIGH);
+  digitalWrite(TRELAY_PIN, HIGH);
   //digitalWrite(LEDPIN, HIGH);
   DBG_OUTPUT_PORT.begin(115200);
   DBG_OUTPUT_PORT.setDebugOutput(true);
@@ -695,6 +792,11 @@ void setup(void) {
   tAdj =  getConfigs("tadj").toInt();
   hAdj =  getConfigs("hadj").toInt();
 
+  bottomThresholdT = getConfigs("bottomthresholdt").toInt();
+  topThresholdT = getConfigs("topthresholdt").toInt();
+  bottomThresholdH = getConfigs("bottomthresholdh").toInt();
+  topThresholdH = getConfigs("topthresholdh").toInt();
+
   dnsServer.start(53, "*", apIP);
 
 
@@ -744,7 +846,7 @@ void setup(void) {
   server.on("/api/reboot", HTTP_GET, reboot_handler);
   server.on("/api/initReg", HTTP_GET, cmdreg_handler);
   server.on("/api/stopReg", HTTP_GET, cmdreg_handler);
-
+  server.on("/api/delReg", HTTP_GET, cmdregdel_handler);
   server.begin();
   DBG_OUTPUT_PORT.println("HTTP server started");
 
@@ -759,14 +861,20 @@ void loop(void) {
     DBG_OUTPUT_PORT.println("Register data");
     registerData();
   }
-  if (((millis() - timerTempLoop) / 1000) > (15))
+  if (((millis() - timerTempLoop) / 1000) > (10))
   {
     getDHTTemperature();
     getDHTHumidity();
+    checkThresholds();
     DBG_OUTPUT_PORT.println("Temp: " + String(currentTemp));
     DBG_OUTPUT_PORT.println("Hum: " + String(currentHum));
     timerTempLoop = millis();
-    digitalWrite(HRELAY_PIN, !regEnable);
+
+  }
+  if (((millis() - timerLedLoop) ) > 1000)
+  {
+    digitalWrite(LEDPIN, ledStatus = (regEnable ? !ledStatus: !regEnable));
+    timerLedLoop = millis();
   }
   updateConfig();
 

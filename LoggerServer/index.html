@@ -36,6 +36,44 @@
             }
         }
 
+        @media screen and (max-width: 768px) {
+            .alert {
+                padding: 5px !important;
+            }
+
+            .alertCont {
+                width: 120px !important;
+            }
+
+            .footMsg {
+                float: left !important;
+                top: -80px !important;
+            }
+
+            .btn-regs {
+                margin-bottom: 10px;
+            }
+        }
+
+        .alert {
+            display: none;
+            text-align: center;
+        }
+
+        .alertCont {
+            width: 200px;
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+
+        .footMsg {
+            float: right;
+            position: relative;
+            top: 22px;
+            font-size: 14px;
+        }
+
         .displayData {
             padding: 4px 10px 4px 10px;
             background: #dadada;
@@ -74,8 +112,8 @@
 <body>
     <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
         <a class="navbar-brand" href="#"><img alt="" style="height:40px;margin-top:-5px;margin-right:10px;" src="/logo.svg" />FungoServer</a>
-      
-          <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+
+        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
@@ -90,9 +128,9 @@
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-        
+
     </nav>
-    <div id="msg" style="width: 100%;position: fixed;top: -5px;margin-left: -15px;z-index: 1;">
+    <div id="msg" style="width: 100%;position: fixed;top: -5px;z-index: 1;">
         <div style="margin: 0 auto;width: 300px;padding: 5px;text-align: center;border-radius: 4px;background-color: #d34141;color:#fff;">msg</div>
     </div>
 
@@ -100,12 +138,14 @@
 
         <!-- Main jumbotron for a primary marketing message or call to action -->
         <div class="jumbotron">
-            <div class="container">
+            <div class="container" style="position:relative;">
                 <span class="displayData"><span id="mainDate"></span> <b id="mainTime"></b></span>
                 <h2 class="display-3" style="margin-top:-5px;font-size: 4.5rem"><span id="mainTemp"></span>º</h2>
-                <p>
-                    La temperatura  minima para hoy fue: <b id="minT"></b><br />y la maxima: <b id="maxT"></b>
-                </p>
+                <h4 style="margin-top: -15px;">humedad <span id="mainHum"></span>%</h4>
+                <div class="alertCont">
+                    <div id="humInited" class="alert alert-warning" role="alert">Humificador prendido</div>
+                    <div id="calInited" class="alert alert-warning" role="alert">Calefactor prendido</div>
+                </div>
             </div>
         </div>
 
@@ -114,7 +154,7 @@
 
             <div class="row">
                 <div class="col-md-6">
-                    <h2>Registro de temperatura</h2>
+                    <h2>Gráfico de temperatura y humedad</h2>
                     <canvas id="tempChart" style="display: block; width: 1008px; z-index:1;" width="1008" class="chartjs-render-monitor" />
                     <p><a class="btn btn-secondary" href="#" role="button">View details &raquo;</a></p>
                 </div>
@@ -125,12 +165,17 @@
                         <div class="dateTitleDv">Mes</div><div id="mCont" class="dateCont"></div>
                         <div class="dateTitleDv">Dia</div><div id="dCont" class="dateCont"></div>
                         <div style="margin-top:15px;">
-                            Muestras por hora: <b id="tempChartSamplesLabel">12</b>
+                            Ver muestras por hora: <b id="tempChartSamplesLabel">12</b>
                             <div style="margin-top:5px;">
                                 <input id="tempChartSamples" type="range" min="1" max="12" value="1" />
                             </div>
                         </div>
                     </div>
+                    <p>
+                        La temperatura/humedad minima fue: <b id="min"></b><br />y la maxima: <b id="max"></b>
+                    </p>
+                    <button id="deleteregday" type="button" class="btn btn-secondary btn-regs">Eliminar registro seleccionado</button>
+                    <button id="downloadregday" type="button" class="btn btn-success btn-regs">Descargar registro seleccionado</button>
                 </div>
 
             </div>
@@ -140,7 +185,7 @@
         </div> <!-- /container -->
     </main>
     <footer class="container">
-        <p><a href="http://monodev.tk" target="_blank"><img alt="" style="height:80px;margin-top:-5px;" src="/monodev.svg" /></a> &copy; 2016-2020</p>
+        <p><a href="http://monodev.tk" target="_blank"><img alt="" style="height:80px;margin-top:-5px;" src="/monodev.svg" /></a> &copy; 2016-2020<span class="footMsg">temperatura dispositivo: <b id="devTemp"></b>º</span></p>
     </footer>
     <script src="/jquery-3.js" crossorigin="anonymous"></script>
     <script>window.jQuery || document.write('<script src="/jquery-3.js"><\/script>')</script>

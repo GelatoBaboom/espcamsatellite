@@ -23,7 +23,9 @@ function Records_CLASS() {
         },
         stats: {
             maxTemp: 0,
-            minTemp: 0
+            minTemp: 0,
+            maxHum: 0,
+            minHum: 0
         },
         init: function (chartElId) {
             var thiscomp = this;
@@ -35,9 +37,9 @@ function Records_CLASS() {
                     dataType: "json",
                     url: '/api/initReg',
                     processData: true,
-                    async: false,
+                    async: true,
                     success: function (resp) {
-                        thiscomp.cmdRegBtnInit.fadeOut(2000);
+                        thiscomp.cmdRegBtnInit.fadeOut(1000);
                         thiscomp.dismissMsg();
                         thiscomp.message("Registro iniciado", false);
                     }
@@ -49,9 +51,9 @@ function Records_CLASS() {
                     dataType: "json",
                     url: '/api/stopReg',
                     processData: true,
-                    async: false,
+                    async: true,
                     success: function (resp) {
-                        thiscomp.cmdRegBtnStop.fadeOut(2000);
+                        thiscomp.cmdRegBtnStop.fadeOut(1000);
                         thiscomp.dismissMsg();
                     }
                 });
@@ -71,7 +73,7 @@ function Records_CLASS() {
             stacked: false,
             title: {
                 display: true,
-                text: 'Grafico de temperatura y humedad'
+                text: ''
             },
             scales: {
                 yAxes: [{
@@ -84,7 +86,10 @@ function Records_CLASS() {
                         steps: 10,
                         stepValue: 5,
                         max: 70
-                    }
+                    },
+					gridLines :{
+						lineWidth:0
+					}
                 },
                 {
                     type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
@@ -96,7 +101,10 @@ function Records_CLASS() {
                         steps: 10,
                         stepValue: 5,
                         max: 100
-                    }
+                    },
+					gridLines :{
+						lineWidth:0
+					}
                 }
                 ],
             }
@@ -156,20 +164,96 @@ function Records_CLASS() {
                         s: thiscomp.selectedReg.samples
                     },
                     processData: true,
-                    async: false,
+                    async: true,
                     success: function (resp) {
                         if (!thiscomp.graphRendered) {
                             thiscomp.render(resp);
                         } else {
                             thiscomp.updateChart(resp);
                         }
-                        thiscomp.stats.maxTemp = resp.stats.max;
-                        thiscomp.stats.minTemp = resp.stats.min;
+                        thiscomp.stats.maxTemp = resp.stats.maxt;
+                        thiscomp.stats.minTemp = resp.stats.mint;
+                        thiscomp.stats.maxHum = resp.stats.maxh;
+                        thiscomp.stats.minHum = resp.stats.minh;
                     }
                 });
 
             }
         },
+        downloadRegs: function () {
+            var thiscomp = this;
+            if (thiscomp.selectedReg.day != 0) {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/getTempJson',
+                    data: {
+                        y: thiscomp.selectedReg.year,
+                        m: thiscomp.selectedReg.month,
+                        d: thiscomp.selectedReg.day,
+                        s: thiscomp.selectedReg.samples
+                    },
+                    processData: true,
+                    async: true,
+                    success: function (resp) {
+                        var csv = 'hora,temperatura,humedad\r\n';
+                        for (var i = 0; i < resp.labels.length; i++) {
+                            csv += resp.labels[i] + ',' + resp.tvalues[i] + ',' + resp.hvalues[i] + '\r\n';
+                        }
+                        thiscomp.makeFile('Registro_' + thiscomp.selectedReg.year + thiscomp.selectedReg.month + thiscomp.selectedReg.day + '.csv', csv);
+                    }
+                });
+            } else {
+                thiscomp.loadRegsBase();
+                var csv = 'fecha,temperatura,humedad\r\n';
+                for (var i = 0; i < thiscomp.registers.length; i++) {
+                    if (thiscomp.registers[i].year == thiscomp.selectedReg.year) {
+                        for (var j = 0; j < thiscomp.registers[i].months.length; j++) {
+                            if (thiscomp.registers[i].months[j].month == thiscomp.selectedReg.month) {
+                                for (var k = 0; k < thiscomp.registers[i].months[j].days.length; k++) {
+                                    var day = thiscomp.registers[i].months[j].days[k];
+                                    $.ajax({
+                                        type: 'GET',
+                                        dataType: "json",
+                                        url: '/api/getTempJson',
+                                        data: {
+                                            y: thiscomp.selectedReg.year,
+                                            m: thiscomp.selectedReg.month,
+                                            d: day,
+                                            s: thiscomp.selectedReg.samples
+                                        },
+                                        processData: true,
+                                        async: false,
+                                        success: function (resp) {
+                                            for (var i = 0; i < resp.labels.length; i++) {
+                                                csv += (day + '/' + thiscomp.selectedReg.month) + '-' + resp.labels[i] + ',' + resp.tvalues[i] + ',' + resp.hvalues[i] + '\r\n';
+                                            }
+
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                thiscomp.makeFile('Registro_' + thiscomp.selectedReg.year + thiscomp.selectedReg.month + '.csv', csv);
+            }
+
+        },
+        makeFile: function (filename, data) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+
+        }
+        ,
         renderRegList: function () {
             var thiscomp = this;
             var yCont = $('#yCont');
@@ -209,8 +293,10 @@ function Records_CLASS() {
                                     thiscomp.selectedReg.year = yvalue.year;
                                     thiscomp.selectedReg.month = mvalue.month;
                                     thiscomp.selectedReg.day = dvalue;
+                                    thiscomp.loadRegsBase();
                                     thiscomp.renderRegList();
                                     thiscomp.renderTempGraph();
+                                    thiscomp.setStats('min', 'max');
                                 });
                                 dCont.append(dEl);
                             });
@@ -223,6 +309,7 @@ function Records_CLASS() {
                         mEl.click(function () {
                             thiscomp.selectedReg.month = mvalue.month;
                             thiscomp.selectedReg.day = 0;
+                            thiscomp.loadRegsBase();
                             thiscomp.renderRegList();
                             thiscomp.renderTempGraph();
                         });
@@ -235,6 +322,7 @@ function Records_CLASS() {
                     });
                 }
                 yEl.click(function () {
+                    thiscomp.loadRegsBase();
                     thiscomp.selectedReg.year = yvalue.year;
                     thiscomp.selectedReg.month = yvalue.months[yvalue.months.length - 1].month;
                     thiscomp.selectedReg.day = yvalue.months[yvalue.months.length - 1].days[yvalue.months[yvalue.months.length - 1].days.length - 1];
@@ -257,19 +345,35 @@ function Records_CLASS() {
                 }
             });
         },
-        setDateTempNow: function (dateElId, timeElMain, tempElId) {
+        setDateTempNow: function (dateElId, timeElMain, tempElId, mainHumEl, tempDevEl, humInitedEl, calInitedEl) {
             var thiscomp = this;
             $.ajax({
                 type: 'GET',
                 dataType: "json",
                 url: '/api/temp',
                 processData: true,
-                async: false,
+                async: true,
                 success: function (resp) {
                     resp.registers;
                     $('#' + dateElId).text((resp.day < 10 ? '0' + resp.day : resp.day) + '/' + (resp.month < 10 ? '0' + resp.month : resp.month));
                     $('#' + timeElMain).text((resp.hour < 10 ? '0' + resp.hour : resp.hour) + ':' + (resp.minute < 10 ? '0' + resp.minute : resp.minute));
                     $('#' + tempElId).text(resp.temp);
+                    $('#' + tempDevEl).text(resp.devtemp);
+                    $('#' + mainHumEl).text(resp.hum);
+                    //dispositivos
+                    var hInEL = $('#' + humInitedEl)
+                    var cInEL = $('#' + calInitedEl)
+                    if (resp.huminited) {
+                        hInEL.fadeIn(500);
+                    } else {
+                        hInEL.fadeOut(500);
+                    }
+                    if (resp.calinited) {
+                        cInEL.fadeIn(500);
+                    } else {
+                        cInEL.fadeOut(500);
+                    }
+
                     if (resp.rtclostpower) {
                         thiscomp.message("El reloj del sistema esta fuera de hora. registro detenido!", true);
                     } else if (!resp.regenable) {
@@ -283,8 +387,8 @@ function Records_CLASS() {
         },
         setStats: function (minTempElId, maxTempElId) {
             var thiscomp = this;
-            $('#' + minTempElId).text(thiscomp.stats.minTemp);
-            $('#' + maxTempElId).text(thiscomp.stats.maxTemp);
+            $('#' + minTempElId).text(thiscomp.stats.minTemp + '/' + thiscomp.stats.minHum + '%');
+            $('#' + maxTempElId).text(thiscomp.stats.maxTemp + '/' + thiscomp.stats.maxHum + '%');
         },
         message: function (textMsg, stay) {
             var el = $('#msg');
@@ -303,14 +407,35 @@ function Records_CLASS() {
                 $('#msg').animate({ top: '-=60' });
                 this.messageDeployed = false;
             }
+        },
+        deleteReg: function () {
+            var thiscomp = this;
+            if (confirm('queres eliminar este registro?')) {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/delReg',
+                    processData: true,
+                    data: {
+                        y: thiscomp.selectedReg.year,
+                        m: thiscomp.selectedReg.month,
+                        d: thiscomp.selectedReg.day
+                    },
+                    async: true,
+                    success: function (resp) {
+                        if (resp.result)
+                            thiscomp.message('Registro eliminado', false);
+                        thiscomp.loadRegsBase();
+                        thiscomp.renderRegList();
+                    }
+                });
+            }
         }
-
     }
 }
 $(document).ready(function () {
     var r = new Records('tempChart');
     r.loadRegsBase();
-    console.log(r);
     var yIdx = r.registers.length - 1;
     var mIdx = r.registers[yIdx].months.length - 1;
     var dIdx = r.registers[yIdx].months[mIdx].days.length - 1;
@@ -320,13 +445,20 @@ $(document).ready(function () {
     r.selectedReg.day = r.registers[yIdx].months[mIdx].days[dIdx];
     r.renderRegList();
     r.renderTempGraph();
+    $('#deleteregday').click(function () {
+        r.deleteReg();
+    });
+    $('#downloadregday').click(function () {
+        r.downloadRegs();
+    });
+
 
     var interval = setInterval(function () {
         r.renderTempGraph();
-        r.setStats('minT', 'maxT');
+        r.setStats('min', 'max');
     }, 10000);
-    r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
+    r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
     var interval = setInterval(function () {
-        r.setDateTempNow('mainDate', 'mainTime', 'mainTemp');
-    }, 30000);
+        r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
+    }, 5000);
 });
