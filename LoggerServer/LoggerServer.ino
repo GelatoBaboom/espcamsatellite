@@ -751,8 +751,9 @@ void setup(void) {
   //WiFi.begin(getConfigs("wifissid"), getConfigs("wifipass"));
   String wifissidStr = getConfigs("wifissid");
   String wifipassStr = getConfigs("wifipass");
-  WiFi.begin(wifissidStr.c_str(), (wifipassStr.length() == 0 ? NULL : wifipassStr.c_str() ));
-
+  if (wifissidStr.length() == 0) {
+    WiFi.begin(wifissidStr.c_str(), (wifipassStr.length() == 0 ? NULL : wifipassStr.c_str() ));
+  }
   //quizas aca chequear....
   DBG_OUTPUT_PORT.print("Connecting to ");
   DBG_OUTPUT_PORT.println(wifissid);
@@ -873,7 +874,7 @@ void loop(void) {
   }
   if (((millis() - timerLedLoop) ) > 1000)
   {
-    digitalWrite(LEDPIN, ledStatus = (regEnable ? !ledStatus: !regEnable));
+    digitalWrite(LEDPIN, ledStatus = (regEnable ? !ledStatus : !regEnable));
     timerLedLoop = millis();
   }
   updateConfig();
