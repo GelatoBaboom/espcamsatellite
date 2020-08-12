@@ -345,7 +345,7 @@ function Records_CLASS() {
                 }
             });
         },
-        setDateTempNow: function (dateElId, timeElMain, tempElId, mainHumEl, tempDevEl, humInitedEl, calInitedEl) {
+        setDateTempNow: function (dateElId, timeElMain, tempElId, mainHumEl, tempDevEl, humInitedEl, calInitedEl, ipDevEl) {
             var thiscomp = this;
             $.ajax({
                 type: 'GET',
@@ -359,7 +359,8 @@ function Records_CLASS() {
                     $('#' + timeElMain).text((resp.hour < 10 ? '0' + resp.hour : resp.hour) + ':' + (resp.minute < 10 ? '0' + resp.minute : resp.minute));
                     $('#' + tempElId).text(resp.temp);
                     $('#' + tempDevEl).text(resp.devtemp);
-                    $('#' + mainHumEl).text(resp.hum);
+					$('#' + ipDevEl).text(resp.ip);
+					$('#' + mainHumEl).text(resp.hum);
                     //dispositivos
                     var hInEL = $('#' + humInitedEl)
                     var cInEL = $('#' + calInitedEl)
@@ -457,8 +458,8 @@ $(document).ready(function () {
         r.renderTempGraph();
         r.setStats('min', 'max');
     }, 10000);
-    r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
+    r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited','ipdev');
     var interval = setInterval(function () {
-        r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited');
+        r.setDateTempNow('mainDate', 'mainTime', 'mainTemp', 'mainHum', 'devTemp', 'humInited', 'calInited','ipdev');
     }, 5000);
 });

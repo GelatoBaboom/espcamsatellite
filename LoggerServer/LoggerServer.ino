@@ -29,6 +29,7 @@ char* wifipass = "";
 const char*  apssid = "FungoServer";
 const char* appass = NULL;
 const char* host = "fungoserver";
+char* localIp = "";
 uint32_t timerLedLoop;
 uint32_t timerLoop;
 uint32_t timerTempLoop = 30 * 1000;
@@ -237,6 +238,7 @@ void temp_handler(AsyncWebServerRequest *request) {
   *p++ = '{';
   p += sprintf(p, "\"temp\":\"%.1f\",", currentTemp);
   p += sprintf(p, "\"hum\":\"%.1f\",", currentHum);
+  p += sprintf(p, "\"ip\":\"%s\",", localIp);
   p += sprintf(p, "\"devtemp\":\"%.1f\",", rtc.getTemperature());
   p += sprintf(p, "\"rtclostpower\":%s,", (rtc.lostPower() ? "true" : "false") );
   p += sprintf(p, "\"regenable\":%s,", (regEnable ? "true" : "false") );
@@ -718,7 +720,11 @@ void checkThresholds()
   }
 }
 
-
+char* ip2CharArray(IPAddress ip) {
+  static char a[16];
+  sprintf(a, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+  return a;
+}
 void setup(void) {
   pinMode(LEDPIN, OUTPUT);
   pinMode(HRELAY_PIN, OUTPUT);
@@ -753,20 +759,33 @@ void setup(void) {
   String wifipassStr = getConfigs("wifipass");
   if (wifissidStr.length() > 0) {
     WiFi.begin(wifissidStr.c_str(), (wifipassStr.length() == 0 ? NULL : wifipassStr.c_str() ));
+    //quizas aca chequear....
+    DBG_OUTPUT_PORT.print("Connecting to ");
+    DBG_OUTPUT_PORT.println(wifissidStr);
+    uint8_t wtries = 0;
+    while (WiFi.status() != WL_CONNECTED && wtries++ < 10) {//wait 10 seconds
+      digitalWrite(LEDPIN, LOW);
+      delay(500);
+      digitalWrite(LEDPIN, HIGH);
+      delay(500);
+    }
+    if (  WiFi.status() == WL_CONNECTED) {
+
+      localIp = ip2CharArray(WiFi.localIP());
+
+      //localIp =  WiFi.localIP().toString().c_str();
+      DBG_OUTPUT_PORT.print("Connected! IP address: ");
+      DBG_OUTPUT_PORT.println( WiFi.localIP().toString());
+      DBG_OUTPUT_PORT.println(localIp);
+    } else
+    {
+      DBG_OUTPUT_PORT.print("Not connected to LAN");
+    }
   } else
   {
     WiFi.mode(WIFI_AP);
   }
-  //quizas aca chequear....
-  DBG_OUTPUT_PORT.print("Connecting to ");
-  DBG_OUTPUT_PORT.println(wifissid);
-  uint8_t wtries = 0;
-  while (WiFi.status() != WL_CONNECTED && wtries++ < 10) {//wait 10 seconds
-    digitalWrite(LEDPIN, LOW);
-    delay(500);
-    digitalWrite(LEDPIN, HIGH);
-    delay(500);
-  }
+
 
   if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
@@ -814,8 +833,6 @@ void setup(void) {
   //    DBG_OUTPUT_PORT.println(ssid);
   //    while (1) delay(500);
   //  }
-  DBG_OUTPUT_PORT.print("Connected! IP address: ");
-  DBG_OUTPUT_PORT.println(WiFi.localIP());
 
   //  if (MDNS.begin(host)) {
   //    MDNS.addService("http", "tcp", 80);
