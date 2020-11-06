@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="MonoDev">
-    <title>FungoServer</title>
+    <title>Alerta Nivel</title>
     <!-- Bootstrap core CSS -->
     <link href="bootstrap.css" rel="stylesheet">
     <style>
@@ -14,7 +14,7 @@
         }
 
         .bg-dark {
-            background-color: #4387ca !important;
+            background-color: #ce5757 !important;
         }
 
         .bd-placeholder-img {
@@ -73,22 +73,10 @@
 </head>
 <body>
     <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-        <a class="navbar-brand" href="/"><img alt="" style="height:40px;margin-top:-5px;margin-right:10px;" src="logo.svg" />FungoServer</a>
+        <a class="navbar-brand" href="/"><img alt="" style="height:40px;margin-top:-5px;margin-right:10px;" src="logo.svg" />AlertaNivel</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-
-        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item ">
-                    <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="/config">Configuración</a>
-                </li>
-            </ul>
-        </div>
-
     </nav>
     <div id="saveMsg" style="width: 100%;position: fixed;top: -5px;z-index: 1;">
         <div style="margin: 0 auto;width: 200px;padding: 5px;text-align: center;border-radius: 4px;background-color: #6baa3f;color:#fff;">msg</div>
@@ -109,154 +97,37 @@
 
             <div class="row">
                 <div class="col-md-6">
-                    <h2>Ajustes de registro</h2>
+                    <h2>Ajustes SMTP</h2>
                     <div class="form-group">
-                        <label for="regtime">Tiempo de espera</label>
-                        <input type="number" class="form-control" id="regtime" aria-describedby="regtimeHelp" placeholder="Tiempo en minutos">
-                        <small id="regtimeHelp" class="form-text text-muted">Tiempo de espera entre cada registro</small>
+                        <label for="smtpserver">Servidor smtp</label>
+                        <input type="text" class="form-control" id="smtpserver" aria-describedby="smtpserverHelp" placeholder="Nombre">
+                        <small id="smtpserverHelp" class="form-text text-muted">Nombre del servidor smtp (ej: smtp.server.com)</small>
                     </div>
                     <div class="form-group">
-                        <label for="tadj">Calibración temperatura</label>
-                        <input type="number" class="form-control" id="tadj" aria-describedby="tadjHelp" placeholder="Ajuste en decima de grados" step="0.1">
-                        <small id="regtimeHelp" class="form-text text-muted">Ajuste positivo o negativo del sensor de temperatura</small>
+                        <label for="smtpport">Puerto SMTP</label>
+                        <input type="number" class="form-control" id="smtpport" aria-describedby="smtpportHelp" placeholder="puerto">
+                        <small id="smtpportHelp" class="form-text text-muted">Numero del puerto (ej: 25 (no recomendado), 587</small>
                     </div>
                     <div class="form-group">
-                        <label for="hadj">Calibración humedad</label>
-                        <input type="number" class="form-control" id="hadj" aria-describedby="hadjHelp" placeholder="Ajuste en decima de grados" step="0.1">
-                        <small id="hadjHelp" class="form-text text-muted">Ajuste positivo o negativo del sensor de humedad</small>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <h2>Configuración de umbrales</h2>
-                    <div class="form-group">
-                        <label for="bottomthresholdh">Umbral inicio (humedad)</label>
-                        <input type="number" class="form-control" id="bottomthresholdh" aria-describedby="bottomthresholdhHelp" placeholder="valor">
-                        <small id="bottomthresholdhHelp" class="form-text text-muted">Valor de humedad en el que debe iniciar el sis. externo</small>
+                        <label for="smtpuser">Usuario</label>
+                        <input type="text" class="form-control" id="smtpuser" aria-describedby="smtpuserHelp" placeholder="Nombre de usuario/email">
+                        <small id="smtpuserHelp" class="form-text text-muted">Usuario con el que se autenticara</small>
                     </div>
                     <div class="form-group">
-                        <label for="topthresholdh">Umbral corte (humedad)</label>
-                        <input type="number" class="form-control" id="topthresholdh" aria-describedby="topthresholdhHelp" placeholder="valor">
-                        <small id="topthresholdhHelp" class="form-text text-muted">Valor de humedad en el que debe apagar el sis. externo</small>
+                        <label for="smtppass">Contraseña</label>
+                        <input type="text" class="form-control" id="smtppass" aria-describedby="smtppassHelp" placeholder="Contraseña smtp">
+                        <small id="smtppassHelp" class="form-text text-muted">Contraseña con la que se autenticara</small>
                     </div>
                     <div class="form-group">
-                        <label for="bottomthresholdt">Umbral inicio (temperatura)</label>
-                        <input type="number" class="form-control" id="bottomthresholdt" aria-describedby="bottomthresholdtHelp" placeholder="valor">
-                        <small id="bottomthresholdtHelp" class="form-text text-muted">Valor de temperatura en el que debe iniciar el sis. externo</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="topthresholdt">Umbral corte (temperatura)</label>
-                        <input type="number" class="form-control" id="topthresholdt" aria-describedby="topthresholdtHelp" placeholder="valor">
-                        <small id="topthresholdtHelp" class="form-text text-muted">Valor de temperatura en el que debe apagar el sis. externo</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <h4>Fecha del sistema</h4>
-                    <div class="form-group">
-                        <label for="regtime">inpdate</label><br />
-                        <input type="date" class="form-control form-control-sm" id="inpdate" placeholder="dd/mm/yyyy" />
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <h4>Hora el sistema</h4>
-                    <div class="form-group">
-                        <label for="inphour">Hora</label><br />
-                        <select id="inphour" style="width:80px;display:inline-table;" class="form-control form-control-sm">
-                            <option>00</option>
-                            <option>01</option>
-                            <option>02</option>
-                            <option>03</option>
-                            <option>04</option>
-                            <option>05</option>
-                            <option>06</option>
-                            <option>07</option>
-                            <option>08</option>
-                            <option>09</option>
-                            <option>10</option>
-                            <option>11</option>
-                            <option>12</option>
-                            <option>13</option>
-                            <option>14</option>
-                            <option>15</option>
-                            <option>16</option>
-                            <option>17</option>
-                            <option>18</option>
-                            <option>19</option>
-                            <option>20</option>
-                            <option>21</option>
-                            <option>22</option>
-                            <option>23</option>
-                        </select>&nbsp;:
-                        <select id="inpminute" style="width:80px;display:inline-table;" class="form-control form-control-sm">
-                            <option>00</option>
-                            <option>01</option>
-                            <option>02</option>
-                            <option>03</option>
-                            <option>04</option>
-                            <option>05</option>
-                            <option>06</option>
-                            <option>07</option>
-                            <option>08</option>
-                            <option>09</option>
-                            <option>10</option>
-                            <option>10</option>
-                            <option>11</option>
-                            <option>12</option>
-                            <option>13</option>
-                            <option>14</option>
-                            <option>15</option>
-                            <option>16</option>
-                            <option>17</option>
-                            <option>18</option>
-                            <option>19</option>
-                            <option>20</option>
-                            <option>21</option>
-                            <option>22</option>
-                            <option>23</option>
-                            <option>24</option>
-                            <option>25</option>
-                            <option>26</option>
-                            <option>27</option>
-                            <option>28</option>
-                            <option>29</option>
-                            <option>30</option>
-                            <option>31</option>
-                            <option>32</option>
-                            <option>33</option>
-                            <option>34</option>
-                            <option>35</option>
-                            <option>36</option>
-                            <option>37</option>
-                            <option>38</option>
-                            <option>39</option>
-                            <option>40</option>
-                            <option>41</option>
-                            <option>42</option>
-                            <option>43</option>
-                            <option>44</option>
-                            <option>45</option>
-                            <option>46</option>
-                            <option>47</option>
-                            <option>48</option>
-                            <option>49</option>
-                            <option>50</option>
-                            <option>51</option>
-                            <option>52</option>
-                            <option>53</option>
-                            <option>54</option>
-                            <option>55</option>
-                            <option>56</option>
-                            <option>57</option>
-                            <option>58</option>
-                            <option>59</option>
-                        </select>
+                        <label for="smtpemailalerta">Email</label>
+                        <input type="text" class="form-control" id="smtpemailalerta" aria-describedby="smtpemailalertaHelp" placeholder="Email alerta">
+                        <small id="smtpemailalertaHelp" class="form-text text-muted">Direccion a la que se enviara la alerta</small>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <h2>Ajustes WiFi</h2>
                     <div class="form-group">
-                        <label for="apssid">Nombre de Red (SSID)</label>
-                        <input type="text" class="form-control" id="apssid" aria-describedby="apssidHelp" placeholder="Nombre de la red del dispositivo">
-                        <small id="apssidHelp" class="form-text text-muted">Este es el nombre de la red que el dispositivo creara (AP).</small>
+                        <h4>AlertaNivel AP</h4>
                     </div>
                     <div class="form-group">
                         <label for="appass">Contraseña de Red</label>
@@ -286,7 +157,6 @@
                     <div class="form-group">
                         <div class="col-md-6">
                             <button id="resetBtn" type="button" class="btn btn-danger">Reiniciar dispositivo</button>
-                            <small id="wifipassHelp" class="form-text text-muted">Para aplicar los cambios reiniciá el dispositivo.</small>
                         </div>
                     </div>
                 </div>

@@ -29,37 +29,6 @@ function Configs_CLASS() {
                     });
                 }
             });
-            $.ajax({
-                type: 'GET',
-                dataType: "json",
-                url: '/api/getRTCConfigsJson',
-                processData: true,
-                async: true,
-                success: function (resp) {
-                    $.each(resp, function (idx, cfg) {
-                        var el = $('#' + cfg.key);
-                        el.val(cfg.value);
-                        el.change(function () {
-                            thiscomp.updateRTC(cfg.key, el.val());
-                        });
-
-                    });
-                }
-            });
-        },
-        updateRTC: function (key, value) {
-            var thiscomp = this;
-            $.ajax({
-                type: 'GET',
-                dataType: "json",
-                url: '/api/setRTCConfig',
-                processData: true,
-                data: { k: key, v: value },
-                async: true,
-                success: function (resp) {
-                    thiscomp.message("Cambios guardados");
-                }
-            });
         },
         updateField: function (key, value) {
             var thiscomp = this;
