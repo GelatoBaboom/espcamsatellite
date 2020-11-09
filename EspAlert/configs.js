@@ -79,13 +79,22 @@ function Configs_CLASS() {
                     processData: true,
                     async: true,
                     success: function (resp) {
-                        if (resp.result) {
-                            thiscomp.message("Prueba enviada!");
-                        } else {
-                            thiscomp.message("Error al enviar la prueba");
-                        }
+                        thiscomp.message("Prueba SMTP iniciada");
                     }
                 });
+            });
+        },
+        getLastResponse: function () {
+            $.ajax({
+                type: 'GET',
+                url: '/api/getResponse',
+                processData: true,
+                async: true,
+                success: function (resp) {
+                    if (resp != $('#serverResponse').value) {
+                        $('#serverResponse').val(resp);
+                    }
+                }
             });
         },
         message: function (textMsg) {
@@ -99,5 +108,5 @@ function Configs_CLASS() {
 }
 $(document).ready(function () {
     var cfg = new Configs();
-
+    setInterval(function () { cfg.getLastResponse() }, 5000);
 });

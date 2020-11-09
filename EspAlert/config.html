@@ -97,6 +97,30 @@
 
             <div class="row">
                 <div class="col-md-6">
+                    <h2>Ajustes WiFi</h2>
+                    <div class="form-group">
+                        <h4>AlertaNivel AP</h4>
+                    </div>
+                    <div class="form-group">
+                        <label for="appass">Contraseña de Red</label>
+                        <input type="text" class="form-control" id="appass" aria-describedby="appassHelp" placeholder="Contraseña de red">
+                        <small id="appassHelp" class="form-text text-muted">Dejar vacio para usar red abierta.</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h2>Internet getway</h2>
+                    <div class="form-group">
+                        <label for="wifissid">Nombre de red a conectar (SSID)</label>
+                        <input type="text" class="form-control" id="wifissid" aria-describedby="wifissidHelp" placeholder="Nombre de la red a conectar">
+                        <small id="wifissidHelp" class="form-text text-muted">Nombre de la red wifi que tiene la conexion a internet.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="wifipass">Contraseña de Red</label>
+                        <input type="text" class="form-control" id="wifipass" aria-describedby="wifipassHelp" placeholder="Contraseña de red">
+                        <small id="wifipassHelp" class="form-text text-muted">Dejar vacio si es una red abierta.</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
                     <h2>Ajustes SMTP</h2>
                     <div class="form-group">
                         <label for="smtpserver">Servidor smtp</label>
@@ -130,34 +154,9 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <h2>Ajustes WiFi</h2>
-                    <div class="form-group">
-                        <h4>AlertaNivel AP</h4>
-                    </div>
-                    <div class="form-group">
-                        <label for="appass">Contraseña de Red</label>
-                        <input type="text" class="form-control" id="appass" aria-describedby="appassHelp" placeholder="Contraseña de red">
-                        <small id="appassHelp" class="form-text text-muted">Dejar vacio para usar red abierta.</small>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <h2>Internet getway</h2>
-                    <div class="form-group">
-                        <label for="wifissid">Nombre de red a conectar (SSID)</label>
-                        <input type="text" class="form-control" id="wifissid" aria-describedby="wifissidHelp" placeholder="Nombre de la red a conectar">
-                        <small id="wifissidHelp" class="form-text text-muted">Nombre de la red wifi que tiene la conexion a internet.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="wifipass">Contraseña de Red</label>
-                        <input type="text" class="form-control" id="wifipass" aria-describedby="wifipassHelp" placeholder="Contraseña de red">
-                        <small id="wifipassHelp" class="form-text text-muted">Dejar vacio si es una red abierta.</small>
-                    </div>
-                </div>
-
-
-            </div>
-            <div class="row">
-                <div class="col-md-6">
+                    <h2>Control del dispositivo</h2>
+                    <textarea id="serverResponse" class="form-control" disabled="disabled" rows="10"></textarea>
+                    <br />
                     <div class="form-group">
                         <div class="col-md-6">
                             <button id="sendBtn" type="button" class="btn btn-success">Probar SMTP</button>
@@ -169,6 +168,11 @@
                         </div>
                     </div>
                 </div>
+
+
+            </div>
+            <div class="row">
+                
             </div>
             <hr>
         </div> <!-- /container -->
