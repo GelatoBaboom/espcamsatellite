@@ -105,10 +105,12 @@ bool Send(const String &to, const String &subject,  const String &message)
 
   if (!client.connect(SMTP_SERVER, SMTP_PORT)) {
     Serial.println("Could not connect to mail server");
+    _serverResponce += "Could not connect to mail server\r\n";
     return false;
   }
   if (!AwaitSMTPResponse(client, "220")) {
     Serial.println( "Connection Error");
+    _serverResponce += "Connection Error\r\n";
     return false;
   }
 
@@ -202,10 +204,6 @@ String getConfigsToJSON()
 {
   String json_response = "[";
 
-  json_response += "{\"key\":\"appass\",\"value\":\"";
-  json_response += getConfigs(40, 10);
-  json_response += "\"},";
-
   json_response += "{\"key\":\"wifissid\",\"value\":\"";
   json_response += getConfigs(0, 20);
   json_response += "\"},";
@@ -236,6 +234,10 @@ String getConfigsToJSON()
 
   json_response += "{\"key\":\"smtpfrom\",\"value\":\"";
   json_response += getConfigs(250, 50);
+  json_response += "\"},";
+
+  json_response += "{\"key\":\"appass\",\"value\":\"";
+  json_response += getConfigs(300, 10);
   json_response += "\"}";
 
   json_response += "]";
@@ -288,9 +290,7 @@ void setconfig_handler(AsyncWebServerRequest *request) {
     }
   }
   Serial.println("Set Config, " + k + ", " + v );
-  if (k == "appass") {
-    setConfigs( v, 40 );
-  }
+
   if (k == "wifissid") {
     setConfigs( v, 0 );
   }
@@ -314,6 +314,9 @@ void setconfig_handler(AsyncWebServerRequest *request) {
   }
   if (k == "smtpfrom") {
     setConfigs( v, 250 );
+  }
+  if (k == "appass") {
+    setConfigs( v, 300 );
   }
 
 

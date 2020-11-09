@@ -80,6 +80,7 @@ function Configs_CLASS() {
                     async: true,
                     success: function (resp) {
                         thiscomp.message("Prueba SMTP iniciada");
+                        $('#serverResponse').val(resp);
                     }
                 });
             });
