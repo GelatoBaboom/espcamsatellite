@@ -119,6 +119,11 @@
                         <small id="smtppassHelp" class="form-text text-muted">Contraseña con la que se autenticara</small>
                     </div>
                     <div class="form-group">
+                        <label for="smtpfrom">Mail From</label>
+                        <input type="text" class="form-control" id="smtpfrom" aria-describedby="smtpfromHelp" placeholder="Direccion from">
+                        <small id="smtpfromHelp" class="form-text text-muted">Email con el que se presentara (mail from)</small>
+                    </div>
+                    <div class="form-group">
                         <label for="smtpemailalerta">Email</label>
                         <input type="text" class="form-control" id="smtpemailalerta" aria-describedby="smtpemailalertaHelp" placeholder="Email alerta">
                         <small id="smtpemailalertaHelp" class="form-text text-muted">Direccion a la que se enviara la alerta</small>
@@ -153,7 +158,11 @@
             </div>
             <div class="row">
                 <div class="col-md-6">
-
+                    <div class="form-group">
+                        <div class="col-md-6">
+                            <button id="sendBtn" type="button" class="btn btn-success">Probar SMTP</button>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <div class="col-md-6">
                             <button id="resetBtn" type="button" class="btn btn-danger">Reiniciar dispositivo</button>

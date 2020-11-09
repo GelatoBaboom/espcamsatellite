@@ -9,9 +9,11 @@ Configs.prototype.action = function () {
 function Configs_CLASS() {
     return {
         btnResetEl: 'resetBtn',
+        btnSendEl: 'sendBtn',
         init: function () {
             var thiscomp = this;
             thiscomp.activeResetDevice();
+            thiscomp.bindSendTest();
             $.ajax({
                 type: 'GET',
                 dataType: "json",
@@ -65,6 +67,25 @@ function Configs_CLASS() {
                     }
                 });
                 setTimeout(function () { window.location = "/"; }, 3000);
+            });
+        },
+        bindSendTest: function () {
+            var thiscomp = this;
+            $('#' + thiscomp.btnSendEl).click(function () {
+                $.ajax({
+                    type: 'GET',
+                    dataType: "json",
+                    url: '/api/sendtest',
+                    processData: true,
+                    async: true,
+                    success: function (resp) {
+                        if (resp.result) {
+                            thiscomp.message("Prueba enviada!");
+                        } else {
+                            thiscomp.message("Error al enviar la prueba");
+                        }
+                    }
+                });
             });
         },
         message: function (textMsg) {
